@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Planner - Full Interactivity Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bg-lined {
+            background-image: linear-gradient(transparent 23px, #e2e8f0 1px);
+            background-size: 100% 24px;
+            background-attachment: local;
+        }
+        .checkbox-circle { width: 1rem; height: 1rem; border-radius: 9999px; border: 1px solid #94a3b8; display: inline-block; cursor: pointer; transition: background 0.2s; }
+        .checkbox-square { width: 1rem; height: 1rem; border: 1px solid #94a3b8; display: inline-block; cursor: pointer; transition: background 0.2s; }
+        .checked { background-color: #0f172a; border-color: #0f172a; }
+        .line-through { text-decoration: line-through; color: #94a3b8; }
+        input::placeholder, textarea::placeholder { color: #e2e8f0; }
+        input, textarea { background: transparent; border: none; outline: none; }
+        .color-dot { width: 1.5rem; height: 1.5rem; border-radius: 9999px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .color-dot.active { border-color: #0f172a; transform: scale(1.1); box-shadow: 0 0 0 4px #f1f5f9; }
+    </style>
+</head>
+<body class="bg-slate-100 p-0 sm:p-8">
+    <div id="planner-container" class="flex flex-col h-screen w-full mx-auto border-x border-slate-300 bg-white overflow-hidden shadow-2xl relative sm:my-4">
+
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-end p-6 border-b-4 border-slate-900 shrink-0 gap-4 bg-white z-20">
+            <div>
+                <h1 class="text-3xl sm:text-5xl font-black tracking-tighter uppercase">Weekly Schedule</h1>
+            </div>
+            <div class="flex items-end gap-4 sm:gap-8 pb-1 w-full sm:w-auto justify-between sm:justify-end">
+               <div class="flex items-baseline gap-2">
+                 <input id="month-input" class="text-3xl sm:text-4xl font-black uppercase text-slate-300 w-20 sm:w-32 text-right focus:text-slate-900" placeholder="AUG">
+                 <span class="w-px h-10 bg-slate-900 mx-2"></span>
+                 <div class="flex flex-col">
+                   <span class="text-[10px] font-black uppercase tracking-widest leading-none">Week of</span>
+                   <input id="weekof-input" class="w-32 sm:w-48 border-b-2 border-slate-400 h-8 text-sm font-bold" placeholder="...">
+                 </div>
+               </div>
+            </div>
+        </header>
+
+        <!-- Color Palette -->
+        <div class="bg-white border-b border-slate-200 p-3 flex items-center justify-center gap-4 shrink-0 z-10 shadow-sm">
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">Marker Color:</span>
+            <div id="palette" class="flex gap-3"></div>
+        </div>
+
+        <!-- Day Selector (Mobile Only) -->
+        <div id="day-selector" class="lg:hidden flex border-b border-slate-200 overflow-x-auto bg-slate-50 shrink-0">
+            <!-- Day buttons injected here -->
+        </div>
+
+        <main class="flex flex-1 overflow-hidden relative">
+            <!-- Desktop Sidebar -->
+            <div id="desktop-sidebar" class="hidden lg:flex w-72 border-r border-slate-300 flex-col gap-6 text-sm shrink-0 overflow-y-auto bg-white p-4">
+                <!-- Content injected here -->
+            </div>
+
+            <!-- Mobile Floating Island (Modal) -->
+            <div id="mobile-island" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="toggleOverview(false)"></div>
+                <div class="relative w-full max-w-sm max-h-[85vh] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+                    <div class="p-6 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50">
+                        <span class="font-black uppercase tracking-widest text-sm">Overview</span>
+                        <button onclick="toggleOverview(false)" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 text-xl">✕</button>
+                    </div>
+                    <div id="island-content" class="flex-1 overflow-y-auto p-6">
+                        <!-- Content injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Day Grid Area -->
+            <div id="day-grid" class="flex flex-1 overflow-x-auto overflow-y-auto bg-slate-50/20">
+                <!-- Day columns injected here -->
+            </div>
+
+            <!-- Mobile FAB -->
+            <button onclick="toggleOverview(true)" class="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-slate-900 text-white rounded-full shadow-xl flex items-center justify-center z-40">
+                <div class="flex flex-col items-center">
+                    <span class="text-[8px] font-black uppercase leading-none mb-0.5">Show</span>
+                    <span class="text-[10px] font-black uppercase leading-none">Habits</span>
+                </div>
+            </button>
+        </main>
+    </div>
+
+    <script>
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const hours = ['1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM'];
+
+        // --- GLOBAL STATE ---
+        let activeDay = 0;
+        let overviewOpen = false;
+        let selectedColor = '#dbeafe';
+        let addingType = null;
+
+        let plannerColors = ['#dbeafe', '#dcfce7', '#fee2e2', '#fef9c3', '#f3e8ff', '#ffedd5'];
+
+        let state = {
+            header: { month: 'Aug', weekOf: '' },
+            weeklyPriorities: [],
+            weeklyTodos: [],
+            habits: Array.from({length: 5}, () => ({ name: '', days: new Array(7).fill(false) })),
+            dailyData: days.map(() => ({
+                priorities: Array.from({length: 4}, (_, i) => ({ id: i, text: '', completed: false })),
+                notes: '',
+                schedule: new Array(144).fill('transparent')
+            }))
+        };
+
+        // --- RENDER FUNCTIONS ---
+
+        function renderPalette() {
+            document.getElementById('palette').innerHTML = `
+                <div onclick="setColor('transparent')" class="color-dot ${selectedColor === 'transparent' ? 'active border-slate-900' : 'border-slate-200'} bg-white flex items-center justify-center">
+                    ${selectedColor === 'transparent' ? '✓' : '<span class="opacity-10 text-xs">✕</span>'}
+                </div>
+                <div class="w-px h-6 bg-slate-200 mx-1"></div>
+            ` + plannerColors.map(c => `
+                <div onclick="setColor('${c}')" class="color-dot ${selectedColor === c ? 'active' : ''}" style="background-color: ${c}">
+                    ${selectedColor === c ? '<div class="flex h-full items-center justify-center text-[8px] font-black">✓</div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderInlinePicker(type) {
+            return `
+                <div class="flex items-center gap-1.5 p-2 bg-slate-50 rounded-lg mb-2">
+                    <span class="text-[9px] font-black text-slate-400 uppercase mr-1">Pick:</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="addWeekly('${type}', 'transparent')" class="w-5 h-5 rounded-full border border-slate-300 bg-white flex items-center justify-center text-[10px]">✕</button>
+                        ${plannerColors.map(c => `
+                            <button onclick="addWeekly('${type}', '${c}')" class="w-5 h-5 rounded-full border border-white shadow-sm" style="background-color: ${c}"></button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSidebar() {
+            const today = new Date();
+            const curDay = today.getDay();
+            const curDate = today.getDate();
+            const isAug2026 = today.getMonth() === 7 && today.getFullYear() === 2026;
+
+            const content = `
+                <div class="space-y-6">
+                    <!-- Mini Calendar -->
+                    <div class="space-y-3">
+                        <h3 class="font-bold uppercase tracking-wider text-[10px] text-slate-500 border-b border-slate-100 pb-1">August 2026</h3>
+                        <div class="grid grid-cols-7 gap-1 text-center max-w-[240px]">
+                            ${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => `
+                                <div class="font-bold text-[9px] ${curDay === i ? 'text-slate-900' : 'text-slate-300'}">${d}</div>
+                            `).join('')}
+                            <div class="col-start-7 py-0.5 text-[9px] text-slate-400">1</div>
+                            ${Array.from({ length: 30 }, (_, i) => {
+                                const d = i + 2;
+                                const isToday = isAug2026 && d === curDate;
+                                return `<div class="py-0.5 text-[9px] rounded-full flex items-center justify-center transition-all ${isToday ? 'bg-slate-900 text-white font-black scale-110 shadow-sm' : 'text-slate-400 hover:bg-slate-50'}">${d}</div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-black uppercase tracking-wider text-[11px] border-b-2 border-slate-900 pb-1 mb-3">Color Key</h3>
+                        <div class="flex flex-wrap gap-2">
+                            ${plannerColors.map(c => `
+                                <div class="relative group">
+                                    <div onclick="setColor('${c}')" class="w-6 h-6 rounded-full border-2 ${selectedColor === c ? 'border-slate-900' : 'border-slate-100'}" style="background-color: ${c}"></div>
+                                    <button onclick="removeColor('${c}')" class="absolute -top-1 -right-1 w-3 h-3 bg-white border rounded-full flex items-center justify-center text-[6px] opacity-0 group-hover:opacity-100">✕</button>
+                                </div>
+                            `).join('')}
+                            <button onclick="document.getElementById('picker').click()" class="w-6 h-6 rounded-full border-2 border-dashed border-slate-200 text-slate-400 font-bold text-xs">+</button>
+                            <input type="color" id="picker" class="hidden" onchange="addColor(this.value)">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center border-b-2 border-slate-900 pb-1 mb-2">
+                            <h3 class="font-black uppercase tracking-wider text-[11px]">Weekly Priorities</h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="clearWeekly('priority')" class="text-[8px] font-black uppercase text-slate-300 hover:text-red-500">Clear</button>
+                                <button onclick="toggleAddPicker('priority')" class="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 font-bold ${addingType === 'priority' ? 'bg-slate-900 text-white rotate-45' : ''}">+</button>
+                            </div>
+                        </div>
+                        ${addingType === 'priority' ? renderInlinePicker('priority') : ''}
+                        <div class="space-y-1">
+                            ${state.weeklyPriorities.map((p, i) => `
+                                <div class="flex items-center gap-2 border-b border-slate-100 py-1.5 group px-1" style="border-left: ${p.color && p.color !== 'transparent' ? '4px solid ' + p.color : 'none'}">
+                                    <div onclick="toggleWeekly('priority', ${i})" class="w-4 h-4 rounded-full border-2 border-slate-300 ${p.completed ? 'checked' : ''}"></div>
+                                    <div onclick="tagWeekly('priority', ${i})" class="w-3 h-3 rounded-full border border-slate-200 ${!p.color || p.color === 'transparent' ? 'border-dashed opacity-30' : ''}" style="background-color: ${p.color || 'transparent'}"></div>
+                                    <input value="${p.text}" oninput="updateWeekly('priority', ${i}, this.value)" class="flex-1 text-[10px] ${p.completed ? 'line-through text-slate-400' : ''}" placeholder="...">
+                                    <button onclick="removeWeekly('priority', ${i})" class="opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center rounded-full text-slate-300 hover:text-red-500 text-[8px]">✕</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center border-b-2 border-slate-900 pb-1 mb-2">
+                            <h3 class="font-black uppercase tracking-wider text-[11px]">Weekly To Do List</h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="clearWeekly('todo')" class="text-[8px] font-black uppercase text-slate-300 hover:text-red-500">Clear</button>
+                                <button onclick="toggleAddPicker('todo')" class="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 font-bold ${addingType === 'todo' ? 'bg-slate-900 text-white rotate-45' : ''}">+</button>
+                            </div>
+                        </div>
+                        ${addingType === 'todo' ? renderInlinePicker('todo') : ''}
+                        <div class="space-y-1">
+                            ${state.weeklyTodos.map((t, i) => `
+                                <div class="flex items-center gap-2 border-b border-slate-100 py-1.5 group px-1" style="border-left: ${t.color && t.color !== 'transparent' ? '4px solid ' + t.color : 'none'}">
+                                    <div onclick="toggleWeekly('todo', ${i})" class="w-4 h-4 rounded-full border-2 border-slate-300 ${t.completed ? 'checked' : ''}"></div>
+                                    <div onclick="tagWeekly('todo', ${i})" class="w-3 h-3 rounded-full border border-slate-200 ${!t.color || t.color === 'transparent' ? 'border-dashed opacity-30' : ''}" style="background-color: ${t.color || 'transparent'}"></div>
+                                    <input value="${t.text}" oninput="updateWeekly('todo', ${i}, this.value)" class="flex-1 text-[10px] ${t.completed ? 'line-through text-slate-400' : ''}" placeholder="...">
+                                    <button onclick="removeWeekly('todo', ${i})" class="opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center rounded-full text-slate-300 hover:text-red-500 text-[8px]">✕</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-black uppercase tracking-wider text-[11px] border-b-2 border-slate-900 pb-1 mb-2">Habits</h3>
+                        <div class="grid grid-cols-[80px_repeat(7,1fr)] gap-1 text-center font-bold text-[8px] my-1 opacity-40">
+                            <div class="text-left pl-1">Habit</div><div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                        </div>
+                        ${state.habits.map((h, hIdx) => `
+                            <div class="grid grid-cols-[80px_repeat(7,1fr)] gap-1 items-center">
+                                <input value="${h.name}" oninput="updateHabitName(${hIdx}, this.value)" class="pr-1 border-b border-slate-50 text-[10px]" placeholder="Name...">
+                                ${h.days.map((checked, dIdx) => `
+                                    <div onclick="toggleHabit(${hIdx}, ${dIdx})" class="w-3.5 h-3.5 rounded-full border border-slate-200 mx-auto ${checked ? 'checked' : ''}"></div>
+                                `).join('')}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('desktop-sidebar').innerHTML = content;
+            document.getElementById('island-content').innerHTML = content;
+        }
+
+        function renderDays() {
+            const grid = document.getElementById('day-grid');
+            grid.innerHTML = days.map((day, i) => {
+                const data = state.dailyData[i];
+                return `
+                    <div class="${activeDay === i ? 'flex' : 'hidden'} lg:flex flex-1 min-w-[180px] lg:min-w-[200px] border-r border-slate-300 flex flex-col text-xs bg-white">
+                        <div class="border-b-2 border-slate-900 p-2 flex items-center gap-2 sticky top-0 bg-white z-20">
+                            <div class="w-5 h-5 border-2 border-slate-900"></div>
+                            <span class="font-black uppercase tracking-widest text-[11px]">${day}</span>
+                        </div>
+                        <div class="p-2 border-b border-slate-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <h4 class="font-black uppercase text-[9px] text-slate-400 tracking-wider">Today's Priorities</h4>
+                                <button onclick="addDailyPriority(${i})" class="w-4 h-4 flex items-center justify-center rounded-full text-slate-400 font-bold text-[10px]">+</button>
+                            </div>
+                            ${data.priorities.map((p, pIdx) => `
+                                <div class="flex items-center gap-2 border-b border-slate-100 py-1 group">
+                                    <div onclick="toggleDailyPriority(${i}, ${pIdx})" class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 ${p.completed ? 'checked' : ''}"></div>
+                                    <input value="${p.text}" oninput="updateDailyPriority(${i}, ${pIdx}, this.value)" class="flex-1 text-[10px] ${p.completed ? 'line-through' : ''}" placeholder="...">
+                                    <button onclick="removeDailyPriority(${i}, ${pIdx})" class="opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center rounded-full text-slate-300 hover:text-red-500 text-[8px]">✕</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="flex-grow flex flex-col min-h-0 bg-slate-50/10">
+                            <div class="grid grid-cols-[50px_1fr] border-b border-slate-200 sticky top-[48px] bg-slate-100/90 backdrop-blur-md z-10 shadow-sm">
+                                <div class="border-r border-slate-200 text-[9px] text-center font-black py-2 uppercase tracking-tighter text-slate-900">Time</div>
+                                <div class="grid grid-cols-6 text-[8px] font-black py-2 text-slate-900 text-center">
+                                    <span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span>
+                                </div>
+                            </div>
+                            <div class="divide-y divide-slate-100">
+                                ${hours.map((h, hIdx) => `
+                                    <div class="grid grid-cols-[50px_1fr] h-12 relative">
+                                        <div class="text-[10px] border-r border-slate-200 flex items-center justify-center font-black text-slate-900 bg-slate-50/80">${h}</div>
+                                        <div class="flex divide-x divide-slate-100 h-full">
+                                            ${Array.from({length:6}).map((_, sIdx) => {
+                                                const color = data.schedule[hIdx * 6 + sIdx];
+                                                return `<div onmousedown="paint(${i}, ${hIdx}, ${sIdx})" onmouseover="if(event.buttons===1) paint(${i}, ${hIdx}, ${sIdx})" class="flex-1 transition-colors cursor-crosshair border-b border-transparent hover:border-slate-200" style="background-color: ${color === 'transparent' ? '' : color}"></div>`;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="border-t-2 border-slate-900 p-4 bg-white">
+                            <h4 class="font-black uppercase text-[10px] text-slate-400 mb-2 tracking-wider">Notes</h4>
+                            <textarea oninput="updateNotes(${i}, this.value)" class="bg-lined w-full h-40 resize-none text-sm leading-[24px] pt-[19px] pb-0 overflow-hidden">${data.notes}</textarea>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- INTERACTION HANDLERS ---
+
+        window.setColor = (val) => { selectedColor = val; renderPalette(); renderSidebar(); };
+        window.paint = (dIdx, hIdx, sIdx) => { state.dailyData[dIdx].schedule[hIdx * 6 + sIdx] = selectedColor; renderDays(); };
+
+        window.addColor = (hex) => { if(!plannerColors.includes(hex)) { plannerColors.push(hex); selectedColor = hex; renderPalette(); renderSidebar(); } };
+        window.removeColor = (hex) => { plannerColors = plannerColors.filter(c => c !== hex); if(selectedColor === hex) selectedColor = 'transparent'; renderPalette(); renderSidebar(); };
+
+        window.setActiveDay = (i) => { activeDay = i; renderSelector(); renderDays(); };
+        window.toggleOverview = (open) => { overviewOpen = open; const island = document.getElementById('mobile-island'); island.classList.toggle('hidden', !open); island.classList.toggle('flex', open); };
+
+        window.updateWeekly = (type, i, val) => { const list = type === 'priority' ? state.weeklyPriorities : state.weeklyTodos; list[i].text = val; };
+        window.toggleWeekly = (type, i) => { const list = type === 'priority' ? state.weeklyPriorities : state.weeklyTodos; list[i].completed = !list[i].completed; renderSidebar(); };
+
+        window.updateHabitName = (i, val) => { state.habits[i].name = val; };
+        window.toggleHabit = (hIdx, dIdx) => { state.habits[hIdx].days[dIdx] = !state.habits[hIdx].days[dIdx]; renderSidebar(); };
+
+        window.updateDailyPriority = (dIdx, pIdx, val) => { state.dailyData[dIdx].priorities[pIdx].text = val; };
+        window.toggleDailyPriority = (dIdx, pIdx) => { state.dailyData[dIdx].priorities[pIdx].completed = !state.dailyData[dIdx].priorities[pIdx].completed; renderDays(); };
+        window.updateNotes = (dIdx, val) => { state.dailyData[dIdx].notes = val; };
+        window.updateColorLabel = (color, val) => { state.colorLabels[color] = val; renderPalette(); };
+
+        window.toggleAddPicker = (type) => { addingType = (addingType === type ? null : type); renderSidebar(); };
+
+        window.addWeekly = (type, color) => {
+            const list = type === 'priority' ? state.weeklyPriorities : state.weeklyTodos;
+            list.push({ id: Date.now(), text: '', completed: false, color: color || 'transparent' });
+            addingType = null;
+            renderSidebar();
+        };
+
+        window.removeWeekly = (type, i) => {
+            const list = type === 'priority' ? state.weeklyPriorities : state.weeklyTodos;
+            list.splice(i, 1);
+            renderSidebar();
+        };
+
+        window.clearWeekly = (type) => {
+            if(type === 'priority') state.weeklyPriorities = [];
+            else state.weeklyTodos = [];
+            renderSidebar();
+        };
+
+        window.tagWeekly = (type, i) => {
+            const list = type === 'priority' ? state.weeklyPriorities : state.weeklyTodos;
+            list[i].color = selectedColor;
+            renderSidebar();
+        };
+
+        window.addDailyPriority = (dIdx) => {
+            state.dailyData[dIdx].priorities.push({ id: Date.now(), text: '', completed: false });
+            renderDays();
+        };
+
+        window.removeDailyPriority = (dIdx, pIdx) => {
+            state.dailyData[dIdx].priorities.splice(pIdx, 1);
+            renderDays();
+        };
+
+        window.tagTodo = (i) => {
+            state.weeklyTodos[i].color = selectedColor;
+            renderSidebar();
+        };
+
+        // Init inputs
+        document.getElementById('month-input').addEventListener('input', (e) => state.header.month = e.target.value);
+        document.getElementById('weekof-input').addEventListener('input', (e) => state.header.weekOf = e.target.value);
+
+        // --- START ---
+        renderPalette();
+        renderSelector();
+        renderSidebar();
+        renderDays();
+    </script>
+</body>
+</html>

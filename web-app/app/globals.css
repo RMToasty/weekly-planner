@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+  font-family: 'Inter', sans-serif;
+}
+
+/* Paper Lined Effect */
+.bg-lined {
+  background-image: linear-gradient(transparent 23px, #e2e8f0 1px);
+  background-size: 100% 24px;
+  background-attachment: local;
+}
+
+/* Custom Checkbox Styles */
+.checkbox-circle {
+  @apply w-4 h-4 rounded-full border border-slate-400 inline-block;
+}
+
+.checkbox-square {
+  @apply w-4 h-4 border border-slate-400 inline-block;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
