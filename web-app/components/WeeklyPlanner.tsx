@@ -75,7 +75,10 @@ const WeeklyPlanner = () => {
       setWeeklyTodos(data.weeklyTodos || []);
       setHabits(data.habits || []);
       setPlannerColors(data.plannerColors || DEFAULT_COLORS);
-      setDailyData(data.dailyData || []);
+      setDailyData((data.dailyData || []).map((d: any) => ({
+        ...d,
+        blockMetadata: d.blockMetadata || {}
+      })));
       setSelectedColor(data.plannerColors?.[0] || DEFAULT_COLORS[0]);
     } else {
       // Default Init - Start with empty lists for the new "Color First" workflow

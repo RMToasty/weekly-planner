@@ -236,7 +236,6 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
           placeholder="Daily reflections..."
         />
       </div>
-      </div>
 
       {/* Edit Modal */}
       {editingBlockIdx !== null && (
@@ -307,5 +306,6 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
       )}
     </div>
   );
+};
 
 export default DayColumn;
