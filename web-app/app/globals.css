@@ -21,6 +21,10 @@ body {
   background-attachment: local;
 }
 
+.dark .bg-lined {
+  background-image: linear-gradient(transparent 23px, #334155 1px);
+}
+
 /* Custom Checkbox Styles */
 .checkbox-circle {
   @apply w-4 h-4 rounded-full border border-slate-400 inline-block;
