@@ -51,6 +51,40 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
     return current;
   };
 
+  const getBlockDimensions = (rootIdx: number) => {
+    const color = data.schedule[rootIdx];
+    let width = 0;
+    let height = 0;
+
+    // Calculate max width in the first row of the block
+    let current = rootIdx;
+    while (current % 6 < 6 && data.schedule[current] === color && (current === rootIdx || current % 6 !== 0)) {
+      width++;
+      current++;
+      if (current % 6 === 0) break;
+    }
+
+    // Calculate height (must have the same width across all rows to be a "block")
+    let rowStart = rootIdx;
+    while (rowStart + 6 < 144) {
+      let isRowMatch = true;
+      for (let i = 0; i < width; i++) {
+        if (data.schedule[rowStart + 6 + i] !== color) {
+          isRowMatch = false;
+          break;
+        }
+      }
+      if (isRowMatch) {
+        height++;
+        rowStart += 6;
+      } else {
+        break;
+      }
+    }
+
+    return { width, height: height + 1 };
+  };
+
   const handleContextMenu = (e: React.MouseEvent, idx: number) => {
     if (data.schedule[idx] === 'transparent') return;
     e.preventDefault();
@@ -182,6 +216,7 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
                   const rootIdx = getBlockRoot(globalIdx);
                   const metadata = rootIdx !== null ? data.blockMetadata?.[rootIdx] : null;
                   const isRoot = rootIdx === globalIdx;
+                  const dims = isRoot ? getBlockDimensions(rootIdx) : null;
 
                   return (
                     <div
@@ -203,17 +238,33 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
                       )}
                       style={{ backgroundColor: isTransparent ? undefined : color }}
                     >
-                      {isRoot && metadata?.symbol && (
-                        <div className="absolute inset-0 flex items-center justify-center text-[10px] pointer-events-none select-none z-10">
-                          {metadata.symbol}
+                      {isRoot && metadata?.symbol && dims && (
+                        <div
+                          className="absolute top-0 left-0 flex items-center justify-center text-[10px] pointer-events-none select-none z-10"
+                          style={{
+                            width: `${dims.width * 100}%`,
+                            height: `${dims.height * 100}%`
+                          }}
+                        >
+                          <span className="bg-white/20 dark:bg-black/20 backdrop-blur-[2px] rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
+                            {metadata.symbol}
+                          </span>
                         </div>
                       )}
 
-                      {/* Floating Island Tooltip */}
-                      {!isTransparent && rootIdx === hoveredBlockIdx && metadata?.text && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[8px] font-bold rounded shadow-xl whitespace-nowrap z-50 pointer-events-none animate-tooltip">
-                          {metadata.text}
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+                      {/* Floating Island Tooltip - Rendered only at root for proper centering */}
+                      {isRoot && metadata?.text && hoveredBlockIdx === rootIdx && (
+                        <div
+                          className="absolute bottom-full mb-2 z-50 pointer-events-none flex justify-center"
+                          style={{
+                            left: 0,
+                            width: `${dims.width * 100}%`
+                          }}
+                        >
+                          <div className="px-2 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[8px] font-bold rounded shadow-xl whitespace-nowrap animate-tooltip relative">
+                            {metadata.text}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
+                          </div>
                         </div>
                       )}
                     </div>
