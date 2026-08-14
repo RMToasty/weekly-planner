@@ -27,6 +27,7 @@ export interface DailyData {
   priorities: TodoItem[];
   notes: string;
   schedule: string[]; // 144 slots (24 hours * 6 slots/hour)
+  blockMetadata?: Record<number, { text?: string, symbol?: string }>;
 }
 
 const DEFAULT_COLORS = ['#dbeafe', '#dcfce7', '#fee2e2', '#fef9c3', '#f3e8ff', '#ffedd5'];
@@ -86,7 +87,8 @@ const WeeklyPlanner = () => {
       setDailyData(days.map((_, dayIdx) => ({
         priorities: Array.from({ length: 4 }, (_, i) => ({ id: `dp-${dayIdx}-${i}`, text: '', completed: false })),
         notes: '',
-        schedule: new Array(144).fill('transparent')
+        schedule: new Array(144).fill('transparent'),
+        blockMetadata: {}
       })));
     }
   }, []);

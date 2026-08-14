@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DailyData, TodoItem } from './WeeklyPlanner';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { MessageSquare, Smile, X, Check } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -18,6 +19,10 @@ interface DayColumnProps {
 }
 
 const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
+  const [editingBlockIdx, setEditingBlockIdx] = useState<number | null>(null);
+  const [hoveredBlockIdx, setHoveredBlockIdx] = useState<number | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
   const hours = [
     '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM',
     '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM'
@@ -33,6 +38,46 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
     const newSchedule = [...data.schedule];
     newSchedule[globalIdx] = selectedColor;
     onUpdate({ schedule: newSchedule });
+  };
+
+  const getBlockRoot = (idx: number) => {
+    const color = data.schedule[idx];
+    if (color === 'transparent') return null;
+    let current = idx;
+    // Look up as far as possible
+    while (current >= 6 && data.schedule[current - 6] === color) current -= 6;
+    // Look left as far as possible within the same hour
+    while (current % 6 > 0 && data.schedule[current - 1] === color) current -= 1;
+    return current;
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, idx: number) => {
+    if (data.schedule[idx] === 'transparent') return;
+    e.preventDefault();
+    setEditingBlockIdx(getBlockRoot(idx));
+  };
+
+  const handleTouchStart = (idx: number) => {
+    if (data.schedule[idx] === 'transparent') return;
+    longPressTimer.current = setTimeout(() => {
+      setEditingBlockIdx(getBlockRoot(idx));
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
+  const updateMetadata = (rootIdx: number, updates: { text?: string, symbol?: string }) => {
+    const newMetadata = { ...(data.blockMetadata || {}) };
+    newMetadata[rootIdx] = { ...(newMetadata[rootIdx] || {}), ...updates };
+    onUpdate({ blockMetadata: newMetadata });
+  };
+
+  const deleteMetadata = (rootIdx: number) => {
+    const newMetadata = { ...(data.blockMetadata || {}) };
+    delete newMetadata[rootIdx];
+    onUpdate({ blockMetadata: newMetadata });
   };
 
   return (
@@ -134,21 +179,44 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
                   // 3. OR both are transparent (to show the grid)
                   const showBorderB = hIdx === 23 || color !== bottomColor || (isTransparent && bottomColor === 'transparent');
 
+                  const rootIdx = getBlockRoot(globalIdx);
+                  const metadata = rootIdx !== null ? data.blockMetadata?.[rootIdx] : null;
+                  const isRoot = rootIdx === globalIdx;
+
                   return (
                     <div
                       key={sIdx}
                       onClick={() => updateCell(hIdx, sIdx)}
+                      onContextMenu={(e) => handleContextMenu(e, globalIdx)}
+                      onTouchStart={() => handleTouchStart(globalIdx)}
+                      onTouchEnd={handleTouchEnd}
                       onMouseEnter={(e) => {
                         if (e.buttons === 1) updateCell(hIdx, sIdx);
+                        if (rootIdx !== null) setHoveredBlockIdx(rootIdx);
                       }}
+                      onMouseLeave={() => setHoveredBlockIdx(null)}
                       className={cn(
-                        "flex-1 transition-colors duration-75 cursor-crosshair",
+                        "flex-1 transition-colors duration-75 cursor-crosshair relative group/cell",
                         showBorderR && "border-r border-slate-100 dark:border-slate-900",
                         showBorderB && "border-b border-slate-100 dark:border-slate-900",
                         isTransparent ? "hover:bg-slate-50/50 dark:hover:bg-slate-800/50" : "hover:brightness-95"
                       )}
                       style={{ backgroundColor: isTransparent ? undefined : color }}
-                    />
+                    >
+                      {isRoot && metadata?.symbol && (
+                        <div className="absolute inset-0 flex items-center justify-center text-[10px] pointer-events-none select-none z-10">
+                          {metadata.symbol}
+                        </div>
+                      )}
+
+                      {/* Floating Island Tooltip */}
+                      {!isTransparent && rootIdx === hoveredBlockIdx && metadata?.text && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[8px] font-bold rounded shadow-xl whitespace-nowrap z-50 pointer-events-none animate-tooltip">
+                          {metadata.text}
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -168,8 +236,76 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
           placeholder="Daily reflections..."
         />
       </div>
+      </div>
+
+      {/* Edit Modal */}
+      {editingBlockIdx !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setEditingBlockIdx(null)}
+          />
+          <div className="relative w-full max-w-[280px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in duration-200">
+            <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <span className="font-black uppercase tracking-widest text-[10px] dark:text-white">Label Block</span>
+              <button
+                onClick={() => setEditingBlockIdx(null)}
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-white"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase text-slate-400">Symbol / Emoji</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength={2}
+                    value={data.blockMetadata?.[editingBlockIdx]?.symbol || ''}
+                    onChange={(e) => updateMetadata(editingBlockIdx, { symbol: e.target.value })}
+                    placeholder="⚡"
+                    className="w-12 h-10 text-center text-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-slate-900 dark:focus:border-white transition-all dark:text-white"
+                  />
+                  <div className="flex-1 flex items-center px-3 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg text-[10px] text-slate-400">
+                    Max 2 chars
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase text-slate-400">Description</label>
+                <textarea
+                  value={data.blockMetadata?.[editingBlockIdx]?.text || ''}
+                  onChange={(e) => updateMetadata(editingBlockIdx, { text: e.target.value })}
+                  placeholder="Task description..."
+                  className="w-full h-20 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-slate-900 dark:focus:border-white transition-all text-xs dark:text-white resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    deleteMetadata(editingBlockIdx);
+                    setEditingBlockIdx(null);
+                  }}
+                  className="flex-1 h-9 text-[10px] font-black uppercase text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors border border-red-100 dark:border-red-900/30"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => setEditingBlockIdx(null)}
+                  className="flex-1 h-9 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Check size={14} /> Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
 
 export default DayColumn;
