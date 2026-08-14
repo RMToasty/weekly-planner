@@ -189,7 +189,7 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
         <div className="flex flex-col">
           {hours.map((hour, hIdx) => (
             <div key={hIdx} className="grid grid-cols-[50px_1fr] h-12 group relative">
-              <div className="text-[10px] border-r border-slate-200 dark:border-slate-800 border-b border-slate-100 dark:border-slate-900 flex items-center justify-center font-black text-slate-900 dark:text-white bg-slate-50/80 dark:bg-slate-900/80">
+              <div className="text-[10px] border-r border-slate-200 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center font-black text-slate-900 dark:text-white bg-slate-50/80 dark:bg-slate-900/80">
                 {hour}
               </div>
               <div className="flex h-full">
@@ -232,8 +232,8 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
                       onMouseLeave={() => setHoveredBlockIdx(null)}
                       className={cn(
                         "flex-1 transition-colors duration-75 cursor-crosshair relative group/cell",
-                        showBorderR && "border-r border-slate-100 dark:border-slate-900",
-                        showBorderB && "border-b border-slate-100 dark:border-slate-900",
+                        showBorderR && "border-r border-slate-100 dark:border-slate-800",
+                        showBorderB && "border-b border-slate-100 dark:border-slate-800",
                         isTransparent ? "hover:bg-slate-50/50 dark:hover:bg-slate-800/50" : "hover:brightness-95"
                       )}
                       style={{ backgroundColor: isTransparent ? undefined : color }}
@@ -282,7 +282,7 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
         <textarea
           value={data.notes}
           onChange={(e) => onUpdate({ notes: e.target.value })}
-          className="bg-lined w-full h-32 outline-none resize-none text-sm font-sans leading-[24px] pt-[21px] pb-0 overflow-hidden dark:text-white dark:placeholder:text-slate-800"
+          className="bg-lined bg-transparent w-full h-32 outline-none resize-none text-sm font-sans leading-[24px] pt-[21px] pb-0 overflow-hidden dark:text-white dark:placeholder:text-slate-800"
           spellCheck={false}
           placeholder="Daily reflections..."
         />

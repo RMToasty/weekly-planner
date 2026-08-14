@@ -184,10 +184,10 @@ const Sidebar = ({
             return (
               <div key={day} className={cn(
                 "py-1 text-[9px] rounded-full transition-all duration-300 flex items-center justify-center relative",
-                isCurrentWeek && !isToday && "bg-slate-100/50 dark:bg-slate-800/30 text-slate-900 dark:text-slate-300",
+                isCurrentWeek && !isToday && "bg-slate-100/50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-200",
                 isToday
-                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black scale-110 shadow-sm z-10"
-                  : !isCurrentWeek && "text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-black scale-110 shadow-sm z-10"
+                  : !isCurrentWeek && "text-slate-400 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
               )}>
                 {day}
               </div>

@@ -22,7 +22,7 @@ body {
 }
 
 .dark .bg-lined {
-  background-image: linear-gradient(transparent 23px, #334155 1px);
+  background-image: linear-gradient(transparent 23px, #1e293b 1px);
 }
 
 /* Custom Checkbox Styles */
