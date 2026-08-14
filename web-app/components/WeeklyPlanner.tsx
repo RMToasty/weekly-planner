@@ -30,6 +30,36 @@ export interface DailyData {
   blockMetadata?: Record<number, { text?: string, symbol?: string }>;
 }
 
+export interface SidebarSettings {
+  showPriorities: boolean;
+  showTodos: boolean;
+  showHabits: boolean;
+  showFocus: boolean;
+  showBrainDump: boolean;
+  showMealPlanner: boolean;
+  showGratitude: boolean;
+  showQuickTrackers: boolean;
+}
+
+export interface QuickTracker {
+  id: string;
+  name: string;
+  value: number;
+  target: number;
+  color: string;
+}
+
+const DEFAULT_SETTINGS: SidebarSettings = {
+  showPriorities: true,
+  showTodos: true,
+  showHabits: true,
+  showFocus: true,
+  showBrainDump: true,
+  showMealPlanner: false,
+  showGratitude: false,
+  showQuickTrackers: false,
+};
+
 const DEFAULT_COLORS = ['#dbeafe', '#dcfce7', '#fee2e2', '#fef9c3', '#f3e8ff', '#ffedd5'];
 
 const WeeklyPlanner = () => {
@@ -63,6 +93,14 @@ const WeeklyPlanner = () => {
   // Habits
   const [habits, setHabits] = useState<HabitItem[]>([]);
 
+  // Modular Widgets State
+  const [sidebarSettings, setSidebarSettings] = useState<SidebarSettings>(DEFAULT_SETTINGS);
+  const [focusData, setFocusData] = useState<string[]>(['', '', '']);
+  const [brainDump, setBrainDump] = useState<string>('');
+  const [mealData, setMealData] = useState<string[]>(new Array(7).fill(''));
+  const [gratitudeData, setGratitudeData] = useState<string[]>(new Array(7).fill(''));
+  const [quickTrackers, setQuickTrackers] = useState<QuickTracker[]>([]);
+
   // Color Palette
   const [plannerColors, setPlannerColors] = useState<string[]>([]);
   const [selectedColor, setSelectedColor] = useState('transparent');
@@ -87,6 +125,12 @@ const WeeklyPlanner = () => {
       setWeeklyPriorities(data.weeklyPriorities || []);
       setWeeklyTodos(data.weeklyTodos || []);
       setHabits(data.habits || []);
+      setSidebarSettings(data.sidebarSettings || DEFAULT_SETTINGS);
+      setFocusData(data.focusData || ['', '', '']);
+      setBrainDump(data.brainDump || '');
+      setMealData(data.mealData || new Array(7).fill(''));
+      setGratitudeData(data.gratitudeData || new Array(7).fill(''));
+      setQuickTrackers(data.quickTrackers || []);
       setPlannerColors(data.plannerColors || DEFAULT_COLORS);
       setDailyData((data.dailyData || []).map((d: any) => ({
         ...d,
@@ -99,6 +143,15 @@ const WeeklyPlanner = () => {
       setWeeklyPriorities([]);
       setWeeklyTodos([]);
       setHabits(Array.from({ length: 5 }, () => ({ name: '', days: new Array(7).fill(false) })));
+      setSidebarSettings(DEFAULT_SETTINGS);
+      setFocusData(['', '', '']);
+      setBrainDump('');
+      setMealData(new Array(7).fill(''));
+      setGratitudeData(new Array(7).fill(''));
+      setQuickTrackers([
+        { id: 'water', name: 'Water (glasses)', value: 0, target: 8, color: '#3b82f6' },
+        { id: 'sleep', name: 'Sleep (hours)', value: 0, target: 8, color: '#8b5cf6' }
+      ]);
       setPlannerColors(DEFAULT_COLORS);
       setSelectedColor(DEFAULT_COLORS[0]);
       setDailyData(days.map((_, dayIdx) => ({
@@ -113,10 +166,12 @@ const WeeklyPlanner = () => {
   useEffect(() => {
     if (dailyData.length > 0) {
       localStorage.setItem('planner_data_v7', JSON.stringify({
-        header, weeklyPriorities, weeklyTodos, habits, plannerColors, dailyData
+        header, weeklyPriorities, weeklyTodos, habits, sidebarSettings,
+        focusData, brainDump, mealData, gratitudeData, quickTrackers,
+        plannerColors, dailyData
       }));
     }
-  }, [header, weeklyPriorities, weeklyTodos, habits, plannerColors, dailyData]);
+  }, [header, weeklyPriorities, weeklyTodos, habits, sidebarSettings, focusData, brainDump, mealData, gratitudeData, quickTrackers, plannerColors, dailyData]);
 
   // --- HANDLERS ---
 
@@ -139,6 +194,57 @@ const WeeklyPlanner = () => {
 
   const removeHabit = (index: number) => {
     setHabits(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateSidebarSettings = (updates: Partial<SidebarSettings>) => {
+    setSidebarSettings(prev => ({ ...prev, ...updates }));
+  };
+
+  const updateFocus = (index: number, val: string) => {
+    setFocusData(prev => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  };
+
+  const updateMeal = (index: number, val: string) => {
+    setMealData(prev => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  };
+
+  const updateGratitude = (index: number, val: string) => {
+    setGratitudeData(prev => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  };
+
+  const updateQuickTracker = (id: string, delta: number) => {
+    setQuickTrackers(prev => prev.map(t =>
+      t.id === id ? { ...t, value: Math.max(0, t.value + delta) } : t
+    ));
+  };
+
+  const addQuickTracker = () => {
+    const name = prompt('Tracker Name:');
+    if (name) {
+      setQuickTrackers(prev => [...prev, {
+        id: `qt-${Date.now()}`,
+        name,
+        value: 0,
+        target: 8,
+        color: plannerColors[Math.floor(Math.random() * plannerColors.length)]
+      }]);
+    }
+  };
+
+  const removeQuickTracker = (id: string) => {
+    setQuickTrackers(prev => prev.filter(t => t.id !== id));
   };
 
   const addPlannerColor = (hex: string) => {
@@ -295,9 +401,23 @@ const WeeklyPlanner = () => {
         {/* Sidebar - Desktop: Fixed, Mobile: Floating Island */}
         <div className="hidden lg:flex shrink-0 border-r border-slate-300 dark:border-slate-800">
           <Sidebar
+            settings={sidebarSettings}
+            onUpdateSettings={updateSidebarSettings}
             priorities={weeklyPriorities}
             todos={weeklyTodos}
             habits={habits}
+            focusData={focusData}
+            onUpdateFocus={updateFocus}
+            brainDump={brainDump}
+            onUpdateBrainDump={setBrainDump}
+            mealData={mealData}
+            onUpdateMeal={updateMeal}
+            gratitudeData={gratitudeData}
+            onUpdateGratitude={updateGratitude}
+            quickTrackers={quickTrackers}
+            onUpdateQuickTracker={updateQuickTracker}
+            onAddQuickTracker={addQuickTracker}
+            onRemoveQuickTracker={removeQuickTracker}
             plannerColors={plannerColors}
             selectedColor={selectedColor}
             onUpdateWeekly={updateWeekly}
@@ -332,9 +452,23 @@ const WeeklyPlanner = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <Sidebar
+                  settings={sidebarSettings}
+                  onUpdateSettings={updateSidebarSettings}
                   priorities={weeklyPriorities}
                   todos={weeklyTodos}
                   habits={habits}
+                  focusData={focusData}
+                  onUpdateFocus={updateFocus}
+                  brainDump={brainDump}
+                  onUpdateBrainDump={setBrainDump}
+                  mealData={mealData}
+                  onUpdateMeal={updateMeal}
+                  gratitudeData={gratitudeData}
+                  onUpdateGratitude={updateGratitude}
+                  quickTrackers={quickTrackers}
+                  onUpdateQuickTracker={updateQuickTracker}
+                  onAddQuickTracker={addQuickTracker}
+                  onRemoveQuickTracker={removeQuickTracker}
                   plannerColors={plannerColors}
                   selectedColor={selectedColor}
                   onUpdateWeekly={updateWeekly}
