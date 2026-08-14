@@ -38,10 +38,23 @@ const WeeklyPlanner = () => {
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // Helper to get dynamic header defaults
+  const getDynamicHeader = () => {
+    const now = new Date();
+    const month = now.toLocaleString('default', { month: 'short' });
+
+    // Get most recent Sunday
+    const sunday = new Date(now);
+    sunday.setDate(now.getDate() - now.getDay());
+    const weekOf = `${month} ${sunday.getDate()}`;
+
+    return { month: month.toUpperCase(), weekOf };
+  };
+
   // --- STATE ---
 
   // Header
-  const [header, setHeader] = useState({ month: 'Aug', weekOf: '' });
+  const [header, setHeader] = useState({ month: '', weekOf: '' });
 
   // Weekly Lists
   const [weeklyPriorities, setWeeklyPriorities] = useState<TodoItem[]>([]);
@@ -70,7 +83,7 @@ const WeeklyPlanner = () => {
 
     if (saved) {
       const data = JSON.parse(saved);
-      setHeader(data.header || { month: 'Aug', weekOf: '' });
+      setHeader(data.header || getDynamicHeader());
       setWeeklyPriorities(data.weeklyPriorities || []);
       setWeeklyTodos(data.weeklyTodos || []);
       setHabits(data.habits || []);
@@ -82,6 +95,7 @@ const WeeklyPlanner = () => {
       setSelectedColor(data.plannerColors?.[0] || DEFAULT_COLORS[0]);
     } else {
       // Default Init - Start with empty lists for the new "Color First" workflow
+      setHeader(getDynamicHeader());
       setWeeklyPriorities([]);
       setWeeklyTodos([]);
       setHabits(Array.from({ length: 5 }, () => ({ name: '', days: new Array(7).fill(false) })));
@@ -117,6 +131,14 @@ const WeeklyPlanner = () => {
 
   const updateHabit = (index: number, updates: Partial<HabitItem>) => {
     setHabits(prev => prev.map((h, i) => i === index ? { ...h, ...updates } : h));
+  };
+
+  const addHabit = () => {
+    setHabits(prev => [...prev, { name: '', days: new Array(7).fill(false) }]);
+  };
+
+  const removeHabit = (index: number) => {
+    setHabits(prev => prev.filter((_, i) => i !== index));
   };
 
   const addPlannerColor = (hex: string) => {
@@ -280,6 +302,8 @@ const WeeklyPlanner = () => {
             selectedColor={selectedColor}
             onUpdateWeekly={updateWeekly}
             onUpdateHabit={updateHabit}
+            onAddHabit={addHabit}
+            onRemoveHabit={removeHabit}
             onAddWeekly={addWeeklyItem}
             onRemoveWeekly={removeWeeklyItem}
             onClearWeekly={clearWeeklyList}
@@ -315,6 +339,8 @@ const WeeklyPlanner = () => {
                   selectedColor={selectedColor}
                   onUpdateWeekly={updateWeekly}
                   onUpdateHabit={updateHabit}
+                  onAddHabit={addHabit}
+                  onRemoveHabit={removeHabit}
                   onAddWeekly={addWeeklyItem}
                   onRemoveWeekly={removeWeeklyItem}
                   onClearWeekly={clearWeeklyList}

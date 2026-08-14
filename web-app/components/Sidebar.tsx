@@ -15,6 +15,8 @@ interface SidebarProps {
   selectedColor: string;
   onUpdateWeekly: (type: 'priority' | 'todo', id: string, updates: Partial<TodoItem>) => void;
   onUpdateHabit: (index: number, updates: Partial<HabitItem>) => void;
+  onAddHabit: () => void;
+  onRemoveHabit: (index: number) => void;
   onAddWeekly: (type: 'priority' | 'todo', color?: string) => void;
   onRemoveWeekly: (type: 'priority' | 'todo', id: string) => void;
   onClearWeekly: (type: 'priority' | 'todo') => void;
@@ -25,11 +27,31 @@ interface SidebarProps {
 
 const Sidebar = ({
   priorities, todos, habits, plannerColors, selectedColor,
-  onUpdateWeekly, onUpdateHabit, onAddWeekly, onRemoveWeekly, onClearWeekly,
+  onUpdateWeekly, onUpdateHabit, onAddHabit, onRemoveHabit, onAddWeekly, onRemoveWeekly, onClearWeekly,
   onAddColor, onRemoveColor, onSelectColor
 }: SidebarProps) => {
   const colorInputRef = useRef<HTMLInputElement>(null);
   const [addingType, setAddingType] = React.useState<'priority' | 'todo' | null>(null);
+
+  // Dynamic Calendar Logic
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const todayDate = now.getDate();
+
+  const monthName = now.toLocaleString('default', { month: 'long' });
+
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  // Current Week Bounds
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(todayDate - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
 
   const renderColorPicker = (type: 'priority' | 'todo') => (
     <div className="flex items-center gap-1.5 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg animate-in slide-in-from-top-1 duration-200 mt-1 mb-2">
@@ -57,25 +79,39 @@ const Sidebar = ({
     <div className="w-full lg:w-72 lg:border-r border-slate-300 dark:border-slate-800 p-4 flex flex-col gap-6 text-sm shrink-0 overflow-y-auto bg-white dark:bg-slate-950">
       {/* Mini Calendar */}
       <div className="space-y-3">
-        <h3 className="font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-1">August 2026</h3>
+        <h3 className="font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-1">
+          {monthName} {currentYear}
+        </h3>
         <div className="grid grid-cols-7 gap-1 text-center max-w-[240px]">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
             <div key={i} className={cn(
               "font-bold text-[9px]",
-              new Date().getDay() === i ? "text-slate-900 dark:text-white" : "text-slate-300 dark:text-slate-600"
+              now.getDay() === i ? "text-slate-900 dark:text-white" : "text-slate-300 dark:text-slate-600"
             )}>{d}</div>
           ))}
-          {Array.from({ length: 31 }, (_, i) => {
+
+          {/* Empty slots for first week */}
+          {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+            <div key={`empty-${i}`} />
+          ))}
+
+          {/* Days of month */}
+          {Array.from({ length: daysInMonth }, (_, i) => {
             const day = i + 1;
-            const today = new Date();
-            const isToday = day === today.getDate() && today.getMonth() === 7 && today.getFullYear() === 2026;
+            const date = new Date(currentYear, currentMonth, day);
+            const isToday = day === todayDate;
+            const isCurrentWeek = date >= startOfWeek && date <= endOfWeek;
+
             return (
-              <div key={i} className={cn(
-                "py-0.5 text-[9px] rounded-full transition-all duration-300 flex items-center justify-center",
+              <div key={day} className={cn(
+                "py-1 text-[9px] rounded-full transition-all duration-300 flex items-center justify-center relative",
+                isCurrentWeek && !isToday && "bg-slate-100/50 dark:bg-slate-800/30 text-slate-900 dark:text-slate-300",
                 isToday
-                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black scale-110 shadow-sm"
-                  : "text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-              )}>{day}</div>
+                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black scale-110 shadow-sm z-10"
+                  : !isCurrentWeek && "text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+              )}>
+                {day}
+              </div>
             );
           })}
         </div>
@@ -258,14 +294,23 @@ const Sidebar = ({
 
       {/* Habit Tracker (Others) */}
       <div className="space-y-4 pb-8">
-        <h3 className="font-black uppercase tracking-wider text-[11px] border-b-2 border-slate-900 dark:border-slate-100 pb-1 dark:text-white">Habit Tracker</h3>
+        <div className="flex justify-between items-center border-b-2 border-slate-900 dark:border-slate-100 pb-1">
+          <h3 className="font-black uppercase tracking-wider text-[11px] dark:text-white">Habit Tracker</h3>
+          <button
+            onClick={onAddHabit}
+            className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors font-bold"
+          >
+            +
+          </button>
+        </div>
         <div className="space-y-3">
-          <div className="grid grid-cols-[80px_repeat(7,1fr)] gap-1 mb-1 font-bold text-center text-[9px] text-slate-400 dark:text-slate-500">
+          <div className="grid grid-cols-[80px_repeat(7,1fr)_20px] gap-1 mb-1 font-bold text-center text-[9px] text-slate-400 dark:text-slate-500">
              <div className="text-left pl-1">Habit</div>
              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <div key={d}>{d}</div>)}
+             <div></div>
           </div>
           {habits.map((habit, hIdx) => (
-            <div key={hIdx} className="grid grid-cols-[80px_repeat(7,1fr)] gap-1 items-center">
+            <div key={hIdx} className="grid grid-cols-[80px_repeat(7,1fr)_20px] gap-1 items-center group">
               <input
                 value={habit.name}
                 onChange={(e) => onUpdateHabit(hIdx, { name: e.target.value })}
@@ -286,6 +331,12 @@ const Sidebar = ({
                   )}
                 />
               ))}
+              <button
+                onClick={() => onRemoveHabit(hIdx)}
+                className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-950 text-slate-300 dark:text-slate-600 hover:text-red-500 transition-all text-[8px]"
+              >
+                ✕
+              </button>
             </div>
           ))}
         </div>
