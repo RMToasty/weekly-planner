@@ -282,7 +282,7 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
         <textarea
           value={data.notes}
           onChange={(e) => onUpdate({ notes: e.target.value })}
-          className="bg-lined w-full h-32 outline-none resize-none text-sm leading-[24px] pt-[19px] pb-0 overflow-hidden dark:text-white dark:placeholder:text-slate-800"
+          className="bg-lined w-full h-32 outline-none resize-none text-sm font-sans leading-[24px] pt-[21px] pb-0 overflow-hidden dark:text-white dark:placeholder:text-slate-800"
           spellCheck={false}
           placeholder="Daily reflections..."
         />
