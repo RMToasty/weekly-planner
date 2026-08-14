@@ -253,7 +253,7 @@ const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority,
                       )}
 
                       {/* Floating Island Tooltip - Rendered only at root for proper centering */}
-                      {isRoot && metadata?.text && hoveredBlockIdx === rootIdx && (
+                      {isRoot && metadata?.text && hoveredBlockIdx === rootIdx && dims && (
                         <div
                           className="absolute bottom-full mb-2 z-50 pointer-events-none flex justify-center"
                           style={{
