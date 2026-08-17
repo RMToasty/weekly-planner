@@ -29,7 +29,7 @@ export interface DailyData {
   priorities: TodoItem[];
   notes: string;
   schedule: string[]; // 144 slots (24 hours * 6 slots/hour)
-  blockMetadata?: Record<number, { text?: string, symbol?: string }>;
+  blockMetadata?: Record<number, { text?: string, symbol?: string, iconName?: string }>;
 }
 
 export interface SidebarSettings {
