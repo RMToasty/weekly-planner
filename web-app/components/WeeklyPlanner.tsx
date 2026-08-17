@@ -201,30 +201,52 @@ const WeeklyPlanner = () => {
 
     const fetchCalendar = async () => {
       try {
-        // node-ical is usually for node, for browser we might need a fetch + parse
-        // Since we can't easily install new libs that work in browser without knowing the env,
-        // we'll try a basic fetch and simple parse if node-ical fails in browser context.
-        const res = await fetch(calendarUrl);
+        // Use a CORS proxy to bypass browser security restrictions for Google/Outlook
+        const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(calendarUrl)}`;
+        const res = await fetch(proxiedUrl);
         const text = await res.text();
 
-        // Very basic ICS parser for the demonstration
+        // Improved basic ICS parser
         const events: SyncedEvent[] = [];
-        const lines = text.split('\n');
+        const lines = text.split(/\r?\n/);
         let currentEvent: any = null;
 
         lines.forEach(line => {
-          if (line.startsWith('BEGIN:VEVENT')) currentEvent = {};
-          if (line.startsWith('SUMMARY:') && currentEvent) currentEvent.title = line.replace('SUMMARY:', '').trim();
-          if (line.startsWith('DTSTART:') && currentEvent) currentEvent.start = parseICSDate(line.replace('DTSTART:', '').trim());
-          if (line.startsWith('DTEND:') && currentEvent) currentEvent.end = parseICSDate(line.replace('DTEND:', '').trim());
+          // Handle line folding (lines starting with space/tab are continuations)
+          if ((line.startsWith(' ') || line.startsWith('\t')) && currentEvent && currentEvent._lastKey) {
+             currentEvent[currentEvent._lastKey] += line.substring(1);
+             return;
+          }
+
+          if (line.startsWith('BEGIN:VEVENT')) {
+            currentEvent = {};
+            return;
+          }
+
           if (line.startsWith('END:VEVENT') && currentEvent) {
             if (currentEvent.start && currentEvent.end) {
               events.push({
                 id: `sync-${Date.now()}-${Math.random()}`,
-                ...currentEvent
+                title: currentEvent.summary || 'Untitled Event',
+                start: currentEvent.start,
+                end: currentEvent.end
               });
             }
             currentEvent = null;
+            return;
+          }
+
+          if (!currentEvent) return;
+
+          const match = line.match(/^([A-Z][-A-Z0-9]*)(?:;.*)?:(.*)$/);
+          if (match) {
+            const key = match[1];
+            const value = match[2].trim();
+            currentEvent._lastKey = key.toLowerCase();
+
+            if (key === 'SUMMARY') currentEvent.summary = value;
+            if (key === 'DTSTART') currentEvent.start = parseICSDate(value);
+            if (key === 'DTEND') currentEvent.end = parseICSDate(value);
           }
         });
 
@@ -240,13 +262,23 @@ const WeeklyPlanner = () => {
   }, [calendarUrl]);
 
   const parseICSDate = (str: string) => {
-    // Format: 20231025T143000Z
+    // Basic formats: 20231025T143000Z or 20231025
+    if (!str) return new Date();
+
     const y = parseInt(str.substring(0, 4));
     const m = parseInt(str.substring(4, 6)) - 1;
     const d = parseInt(str.substring(6, 8));
-    const h = parseInt(str.substring(9, 11));
-    const min = parseInt(str.substring(11, 13));
-    return new Date(y, m, d, h, min);
+
+    if (str.includes('T')) {
+      const h = parseInt(str.substring(9, 11));
+      const min = parseInt(str.substring(11, 13));
+      // Note: This ignores seconds and assumes local time for simplicity
+      // In a full app, we'd handle the 'Z' (UTC) or TZID
+      return new Date(y, m, d, h, min);
+    }
+
+    // All day event
+    return new Date(y, m, d, 0, 0);
   };
 
   // --- HANDLERS ---

@@ -251,10 +251,10 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, synced
           return (
             <div
               key={event.id}
-              className="absolute left-[50px] right-0 border-2 border-slate-400/30 bg-slate-400/5 rounded-md pointer-events-none z-0 overflow-hidden px-1"
+              className="absolute left-[50px] right-0 border-2 border-slate-400/50 bg-slate-400/10 rounded-md pointer-events-none z-0 overflow-hidden px-1"
               style={{ top: `${top}px`, height: `${height}px` }}
             >
-              <span className="text-[7px] font-bold text-slate-400 uppercase truncate block">
+              <span className="text-[7px] font-bold text-slate-500 uppercase truncate block">
                 {event.title}
               </span>
             </div>

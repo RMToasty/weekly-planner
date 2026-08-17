@@ -192,7 +192,14 @@ const Sidebar = ({
               </button>
             <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
             <div className="p-2 space-y-1.5">
-              <label className="text-[10px] font-black uppercase text-slate-400">Calendar Sync (iCal URL)</label>
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-black uppercase text-slate-400">Calendar Sync (iCal URL)</label>
+                {calendarUrl && (
+                  <span className="text-[8px] font-bold text-green-500 uppercase">
+                    Syncing...
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={calendarUrl}
@@ -200,6 +207,9 @@ const Sidebar = ({
                 placeholder="https://calendar.google.com/..."
                 className="w-full p-2 text-[10px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-slate-900 dark:focus:border-white transition-all dark:text-white"
               />
+              <p className="text-[8px] text-slate-400 uppercase leading-tight px-1">
+                Paste your secret iCal link. Events appear as ghost blocks when Template Mode is OFF.
+              </p>
             </div>
           </div>
         </div>
