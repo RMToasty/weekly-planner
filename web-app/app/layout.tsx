@@ -7,6 +7,14 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "Weekly Planner | TrackerHub",
   description: "A minimalist weekly schedule and habit tracker",
+  manifest: "/manifest.json",
+};
+
+export const viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

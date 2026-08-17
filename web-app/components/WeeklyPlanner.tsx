@@ -64,6 +64,13 @@ const DEFAULT_SETTINGS: SidebarSettings = {
 
 const DEFAULT_COLORS = ['#dbeafe', '#dcfce7', '#fee2e2', '#fef9c3', '#f3e8ff', '#ffedd5'];
 
+export interface SyncedEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+}
+
 const WeeklyPlanner = () => {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const [activeDayIndex, setActiveDayIndex] = useState(0);
@@ -92,6 +99,8 @@ const WeeklyPlanner = () => {
 
   // Header
   const [header, setHeader] = useState({ month: '', weekOf: '' });
+  const [calendarUrl, setCalendarUrl] = useState('');
+  const [syncedEvents, setSyncedEvents] = useState<SyncedEvent[]>([]);
 
   // Weekly Lists
   const [weeklyPriorities, setWeeklyPriorities] = useState<TodoItem[]>([]);
@@ -140,6 +149,7 @@ const WeeklyPlanner = () => {
       setGratitudeData(data.gratitudeData || new Array(7).fill(''));
       setQuickTrackers(data.quickTrackers || []);
       setPlannerColors(data.plannerColors || DEFAULT_COLORS);
+      setCalendarUrl(data.calendarUrl || '');
       setDailyData((data.dailyData || []).map((d: any) => ({
         ...d,
         blockMetadata: d.blockMetadata || {}
@@ -177,10 +187,67 @@ const WeeklyPlanner = () => {
       localStorage.setItem('planner_data_v7', JSON.stringify({
         header, weeklyPriorities, weeklyTodos, habits, sidebarSettings,
         focusData, brainDump, mealData, gratitudeData, quickTrackers,
-        plannerColors, dailyData, templateMode
+        plannerColors, dailyData, templateMode, calendarUrl
       }));
     }
-  }, [header, weeklyPriorities, weeklyTodos, habits, sidebarSettings, focusData, brainDump, mealData, gratitudeData, quickTrackers, plannerColors, dailyData, templateMode]);
+  }, [header, weeklyPriorities, weeklyTodos, habits, sidebarSettings, focusData, brainDump, mealData, gratitudeData, quickTrackers, plannerColors, dailyData, templateMode, calendarUrl]);
+
+  // Calendar Sync Logic
+  useEffect(() => {
+    if (!calendarUrl) {
+      setSyncedEvents([]);
+      return;
+    }
+
+    const fetchCalendar = async () => {
+      try {
+        // node-ical is usually for node, for browser we might need a fetch + parse
+        // Since we can't easily install new libs that work in browser without knowing the env,
+        // we'll try a basic fetch and simple parse if node-ical fails in browser context.
+        const res = await fetch(calendarUrl);
+        const text = await res.text();
+
+        // Very basic ICS parser for the demonstration
+        const events: SyncedEvent[] = [];
+        const lines = text.split('\n');
+        let currentEvent: any = null;
+
+        lines.forEach(line => {
+          if (line.startsWith('BEGIN:VEVENT')) currentEvent = {};
+          if (line.startsWith('SUMMARY:') && currentEvent) currentEvent.title = line.replace('SUMMARY:', '').trim();
+          if (line.startsWith('DTSTART:') && currentEvent) currentEvent.start = parseICSDate(line.replace('DTSTART:', '').trim());
+          if (line.startsWith('DTEND:') && currentEvent) currentEvent.end = parseICSDate(line.replace('DTEND:', '').trim());
+          if (line.startsWith('END:VEVENT') && currentEvent) {
+            if (currentEvent.start && currentEvent.end) {
+              events.push({
+                id: `sync-${Date.now()}-${Math.random()}`,
+                ...currentEvent
+              });
+            }
+            currentEvent = null;
+          }
+        });
+
+        setSyncedEvents(events);
+      } catch (err) {
+        console.error('Calendar sync failed', err);
+      }
+    };
+
+    fetchCalendar();
+    const interval = setInterval(fetchCalendar, 1000 * 60 * 15); // Every 15 mins
+    return () => clearInterval(interval);
+  }, [calendarUrl]);
+
+  const parseICSDate = (str: string) => {
+    // Format: 20231025T143000Z
+    const y = parseInt(str.substring(0, 4));
+    const m = parseInt(str.substring(4, 6)) - 1;
+    const d = parseInt(str.substring(6, 8));
+    const h = parseInt(str.substring(9, 11));
+    const min = parseInt(str.substring(11, 13));
+    return new Date(y, m, d, h, min);
+  };
 
   // --- HANDLERS ---
 
@@ -496,6 +563,8 @@ const WeeklyPlanner = () => {
             templateMode={templateMode}
             onToggleTemplateMode={() => setTemplateMode(!templateMode)}
             isExporting={isExporting}
+            calendarUrl={calendarUrl}
+            onUpdateCalendarUrl={setCalendarUrl}
             priorities={weeklyPriorities}
             todos={weeklyTodos}
             habits={habits}
@@ -549,6 +618,8 @@ const WeeklyPlanner = () => {
                   onUpdateSettings={updateSidebarSettings}
                   templateMode={templateMode}
                   onToggleTemplateMode={() => setTemplateMode(!templateMode)}
+                  calendarUrl={calendarUrl}
+                  onUpdateCalendarUrl={setCalendarUrl}
                   priorities={weeklyPriorities}
                   todos={weeklyTodos}
                   habits={habits}
@@ -587,29 +658,43 @@ const WeeklyPlanner = () => {
           "flex-1 flex bg-slate-50/30 dark:bg-slate-900/10",
           isExporting ? "overflow-visible" : "overflow-x-auto overflow-y-auto"
         )}>
-          {days.map((day, index) => (
-            <div
-              key={day}
-              className={cn(
-                "flex-1 flex flex-col min-w-[180px] lg:min-w-[200px]",
-                isExporting ? "flex" : (activeDayIndex === index ? "flex" : "hidden lg:flex")
-              )}
-            >
-              {dailyData[index] && (
-                <DayColumn
-                  day={day}
-                  data={dailyData[index]}
-                  templateMode={templateMode}
-                  isExporting={isExporting}
-                  selectedColor={selectedColor}
-                  isToday={!templateMode && new Date().getDay() === index}
-                  onUpdate={(updates) => updateDaily(index, updates)}
-                  onAddPriority={() => addDailyPriority(index)}
-                  onRemovePriority={(id) => removeDailyPriority(index, id)}
-                />
-              )}
-            </div>
-          ))}
+          {days.map((day, index) => {
+            // Filter synced events for this day
+            const dayStart = new Date();
+            dayStart.setDate(dayStart.getDate() - dayStart.getDay() + index);
+            dayStart.setHours(0,0,0,0);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setHours(23,59,59,999);
+
+            const dayEvents = syncedEvents.filter(e =>
+              e.start >= dayStart && e.start <= dayEnd
+            );
+
+            return (
+              <div
+                key={day}
+                className={cn(
+                  "flex-1 flex flex-col min-w-[180px] lg:min-w-[200px]",
+                  isExporting ? "flex" : (activeDayIndex === index ? "flex" : "hidden lg:flex")
+                )}
+              >
+                {dailyData[index] && (
+                  <DayColumn
+                    day={day}
+                    data={dailyData[index]}
+                    templateMode={templateMode}
+                    isExporting={isExporting}
+                    selectedColor={selectedColor}
+                    syncedEvents={dayEvents}
+                    isToday={!templateMode && new Date().getDay() === index}
+                    onUpdate={(updates) => updateDaily(index, updates)}
+                    onAddPriority={() => addDailyPriority(index)}
+                    onRemovePriority={(id) => removeDailyPriority(index, id)}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Mobile Floating Action Button */}

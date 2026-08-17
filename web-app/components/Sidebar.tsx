@@ -19,6 +19,8 @@ interface SidebarProps {
   templateMode: boolean;
   onToggleTemplateMode: () => void;
   isExporting?: boolean;
+  calendarUrl: string;
+  onUpdateCalendarUrl: (url: string) => void;
   priorities: TodoItem[];
   todos: TodoItem[];
   habits: HabitItem[];
@@ -52,6 +54,7 @@ const Sidebar = ({
   settings, onUpdateSettings,
   templateMode, onToggleTemplateMode,
   isExporting,
+  calendarUrl, onUpdateCalendarUrl,
   priorities, todos, habits,
   focusData, onUpdateFocus,
   brainDump, onUpdateBrainDump,
@@ -187,6 +190,17 @@ const Sidebar = ({
                 </div>
                 {templateMode ? <ToggleRight className="text-slate-900 dark:text-white" /> : <ToggleLeft className="text-slate-300" />}
               </button>
+            <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+            <div className="p-2 space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-slate-400">Calendar Sync (iCal URL)</label>
+              <input
+                type="text"
+                value={calendarUrl}
+                onChange={(e) => onUpdateCalendarUrl(e.target.value)}
+                placeholder="https://calendar.google.com/..."
+                className="w-full p-2 text-[10px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-slate-900 dark:focus:border-white transition-all dark:text-white"
+              />
+            </div>
           </div>
         </div>
       )}

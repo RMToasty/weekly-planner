@@ -1,8 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { DailyData, TodoItem } from './WeeklyPlanner';
+import { DailyData, TodoItem, SyncedEvent } from './WeeklyPlanner';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { MessageSquare, Smile, X, Check } from 'lucide-react';
+import {
+  MessageSquare, Smile, X, Check,
+  Zap, Dumbbell, Coffee, Book, Briefcase,
+  Heart, Music, MapPin, Star, GraduationCap,
+  ShoppingBag, Utensils, Laptop, Phone,
+  Sun, Moon, Pill, Bath, Plane, Camera
+} from 'lucide-react';
+import * as Icons from 'lucide-react';
+
+const ICON_LIST = [
+  { name: 'Zap', Icon: Zap },
+  { name: 'Dumbbell', Icon: Dumbbell },
+  { name: 'Coffee', Icon: Coffee },
+  { name: 'Book', Icon: Book },
+  { name: 'Briefcase', Icon: Briefcase },
+  { name: 'Heart', Icon: Heart },
+  { name: 'Music', Icon: Music },
+  { name: 'MapPin', Icon: MapPin },
+  { name: 'Star', Icon: Star },
+  { name: 'GraduationCap', Icon: GraduationCap },
+  { name: 'ShoppingBag', Icon: ShoppingBag },
+  { name: 'Utensils', Icon: Utensils },
+  { name: 'Laptop', Icon: Laptop },
+  { name: 'Phone', Icon: Phone },
+  { name: 'Sun', Icon: Sun },
+  { name: 'Moon', Icon: Moon },
+  { name: 'Pill', Icon: Pill },
+  { name: 'Bath', Icon: Bath },
+  { name: 'Plane', Icon: Plane },
+  { name: 'Camera', Icon: Camera },
+];
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -14,13 +44,14 @@ interface DayColumnProps {
   templateMode: boolean;
   isExporting?: boolean;
   selectedColor: string;
+  syncedEvents?: SyncedEvent[];
   isToday?: boolean;
   onUpdate: (updates: Partial<DailyData>) => void;
   onAddPriority: () => void;
   onRemovePriority: (id: string) => void;
 }
 
-const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
+const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, syncedEvents = [], isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
   const [editingBlockIdx, setEditingBlockIdx] = useState<number | null>(null);
   const [hoveredBlockIdx, setHoveredBlockIdx] = useState<number | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -104,7 +135,7 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, isToda
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
 
-  const updateMetadata = (rootIdx: number, updates: { text?: string, symbol?: string }) => {
+  const updateMetadata = (rootIdx: number, updates: { text?: string, symbol?: string, iconName?: string }) => {
     const newMetadata = { ...(data.blockMetadata || {}) };
     newMetadata[rootIdx] = { ...(newMetadata[rootIdx] || {}), ...updates };
     onUpdate({ blockMetadata: newMetadata });
@@ -194,9 +225,42 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, isToda
 
       {/* Hourly Schedule (Scrollable area) */}
       <div className={cn(
-        "flex-grow flex flex-col min-h-0 bg-slate-50/10 dark:bg-slate-900/5",
+        "flex-grow flex flex-col min-h-0 bg-slate-50/10 dark:bg-slate-900/5 relative",
         isExporting ? "overflow-visible" : ""
       )}>
+        {/* Synced Events Layer */}
+        {!templateMode && syncedEvents.map(event => {
+          const startHour = event.start.getHours();
+          const startMin = event.start.getMinutes();
+          const endHour = event.end.getHours();
+          const endMin = event.end.getMinutes();
+
+          // Map 0-23 hours to the 1AM-12AM grid
+          // Grid: 1AM(idx 0), ..., 11PM(idx 22), 12AM(idx 23)
+          // So hour 1 -> top 0
+          // Hour 0 (12AM) -> top 23
+          const getGridRow = (h: number) => h === 0 ? 23 : h - 1;
+
+          const topRow = getGridRow(startHour);
+          const top = (topRow * 32) + (startMin / 60 * 32);
+
+          const endRow = getGridRow(endHour);
+          const bottom = (endRow * 32) + (endMin / 60 * 32);
+          const height = Math.max(8, bottom - top);
+
+          return (
+            <div
+              key={event.id}
+              className="absolute left-[50px] right-0 border-2 border-slate-400/30 bg-slate-400/5 rounded-md pointer-events-none z-0 overflow-hidden px-1"
+              style={{ top: `${top}px`, height: `${height}px` }}
+            >
+              <span className="text-[7px] font-bold text-slate-400 uppercase truncate block">
+                {event.title}
+              </span>
+            </div>
+          );
+        })}
+
         <div className="flex flex-col">
           {hours.map((hour, hIdx) => (
             <div key={hIdx} className="grid grid-cols-[50px_1fr] h-8 group relative">
@@ -249,16 +313,20 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, isToda
                       )}
                       style={{ backgroundColor: isTransparent ? undefined : color }}
                     >
-                      {isRoot && metadata?.symbol && dims && (
+                      {isRoot && (metadata?.symbol || metadata?.iconName) && dims && (
                         <div
-                          className="absolute top-0 left-0 flex items-center justify-center text-[10px] pointer-events-none select-none z-10"
+                          className="absolute top-0 left-0 flex items-center justify-center pointer-events-none select-none z-10"
                           style={{
                             width: `${dims.width * 100}%`,
                             height: `${dims.height * 100}%`
                           }}
                         >
-                          <span className="bg-white/20 dark:bg-black/20 backdrop-blur-[2px] rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
-                            {metadata.symbol}
+                          <span className="bg-white/40 dark:bg-black/40 backdrop-blur-[2px] rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
+                            {metadata.iconName ? (
+                              React.createElement((Icons as any)[metadata.iconName], { size: 12, className: "dark:text-white text-slate-900" })
+                            ) : (
+                              <span className="text-[10px] font-black">{metadata.symbol}</span>
+                            )}
                           </span>
                         </div>
                       )}
@@ -322,20 +390,35 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, isToda
 
             <div className="p-4 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase text-slate-400">Symbol / Emoji</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    maxLength={2}
-                    value={data.blockMetadata?.[editingBlockIdx]?.symbol || ''}
-                    onChange={(e) => updateMetadata(editingBlockIdx, { symbol: e.target.value })}
-                    placeholder="⚡"
-                    className="w-12 h-10 text-center text-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-slate-900 dark:focus:border-white transition-all dark:text-white"
-                  />
-                  <div className="flex-1 flex items-center px-3 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg text-[10px] text-slate-400">
-                    Max 2 chars
-                  </div>
+                <label className="text-[9px] font-black uppercase text-slate-400">Sticker / Icon</label>
+                <div className="grid grid-cols-5 gap-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg max-h-32 overflow-y-auto">
+                  {ICON_LIST.map(({ name, Icon }) => (
+                    <button
+                      key={name}
+                      onClick={() => updateMetadata(editingBlockIdx, { iconName: name, symbol: '' })}
+                      className={cn(
+                        "w-8 h-8 flex items-center justify-center rounded-md border transition-all",
+                        data.blockMetadata?.[editingBlockIdx]?.iconName === name
+                          ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-slate-400"
+                      )}
+                    >
+                      <Icon size={14} />
+                    </button>
+                  ))}
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase text-slate-400">Or Symbol (Max 2 chars)</label>
+                <input
+                  type="text"
+                  maxLength={2}
+                  value={data.blockMetadata?.[editingBlockIdx]?.symbol || ''}
+                  onChange={(e) => updateMetadata(editingBlockIdx, { symbol: e.target.value, iconName: '' })}
+                  placeholder="⚡"
+                  className="w-full h-10 text-center text-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-slate-900 dark:focus:border-white transition-all dark:text-white"
+                />
               </div>
 
               <div className="space-y-1.5">
