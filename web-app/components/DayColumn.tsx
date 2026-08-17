@@ -12,6 +12,7 @@ interface DayColumnProps {
   day: string;
   data: DailyData;
   templateMode: boolean;
+  isExporting?: boolean;
   selectedColor: string;
   isToday?: boolean;
   onUpdate: (updates: Partial<DailyData>) => void;
@@ -19,7 +20,7 @@ interface DayColumnProps {
   onRemovePriority: (id: string) => void;
 }
 
-const DayColumn = ({ day, data, templateMode, selectedColor, isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
+const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
   const [editingBlockIdx, setEditingBlockIdx] = useState<number | null>(null);
   const [hoveredBlockIdx, setHoveredBlockIdx] = useState<number | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -116,9 +117,15 @@ const DayColumn = ({ day, data, templateMode, selectedColor, isToday, onUpdate, 
   };
 
   return (
-    <div className="flex-1 min-w-[180px] lg:min-w-[200px] border-r border-slate-300 dark:border-slate-800 flex flex-col text-xs bg-white dark:bg-slate-950 relative">
+    <div className={cn(
+      "flex-1 flex flex-col text-xs bg-white dark:bg-slate-950 relative",
+      isExporting ? "min-w-[200px]" : "min-w-[180px] lg:min-w-[200px] border-r border-slate-300 dark:border-slate-800"
+    )}>
       {/* Sticky Top Section: Header + Priorities + Grid Header */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-slate-950 shadow-sm">
+      <div className={cn(
+        "z-30 bg-white dark:bg-slate-950 shadow-sm",
+        isExporting ? "relative" : "sticky top-0"
+      )}>
         {/* Day Header */}
         <div className={cn(
           "border-b-2 p-1.5 flex items-center gap-2 transition-colors duration-500",
@@ -186,7 +193,10 @@ const DayColumn = ({ day, data, templateMode, selectedColor, isToday, onUpdate, 
       </div>
 
       {/* Hourly Schedule (Scrollable area) */}
-      <div className="flex-grow flex flex-col min-h-0 bg-slate-50/10 dark:bg-slate-900/5">
+      <div className={cn(
+        "flex-grow flex flex-col min-h-0 bg-slate-50/10 dark:bg-slate-900/5",
+        isExporting ? "overflow-visible" : ""
+      )}>
         <div className="flex flex-col">
           {hours.map((hour, hIdx) => (
             <div key={hIdx} className="grid grid-cols-[50px_1fr] h-8 group relative">
@@ -278,7 +288,10 @@ const DayColumn = ({ day, data, templateMode, selectedColor, isToday, onUpdate, 
       </div>
 
       {/* Sticky Bottom Section: Notes */}
-      <div className="sticky bottom-0 z-30 border-t-2 border-slate-900 dark:border-slate-100 p-3 bg-white dark:bg-slate-950 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+      <div className={cn(
+        "z-30 border-t-2 border-slate-900 dark:border-slate-100 p-3 bg-white dark:bg-slate-950 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]",
+        isExporting ? "relative" : "sticky bottom-0"
+      )}>
         <h4 className="font-black uppercase text-[9px] mb-1.5 text-slate-400 dark:text-slate-500 tracking-wider">Notes</h4>
         <textarea
           value={data.notes}

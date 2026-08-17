@@ -70,6 +70,7 @@ const WeeklyPlanner = () => {
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [templateMode, setTemplateMode] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const plannerRef = useRef<HTMLDivElement>(null);
 
   // Helper to get dynamic header defaults
@@ -186,6 +187,11 @@ const WeeklyPlanner = () => {
   const handleExport = async (format: 'png' | 'pdf') => {
     if (!plannerRef.current) return;
 
+    setIsExporting(true);
+
+    // Small delay to allow React to re-render with expanded styles
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     const filter = (node: HTMLElement) => {
       return !node.classList?.contains('no-export');
     };
@@ -214,6 +220,8 @@ const WeeklyPlanner = () => {
       }
     } catch (err) {
       console.error('Export failed', err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -348,41 +356,55 @@ const WeeklyPlanner = () => {
   };
 
   return (
-    <div ref={plannerRef} className="flex flex-col h-screen w-full mx-auto border-x border-slate-300 bg-white dark:bg-slate-950 dark:border-slate-800 overflow-hidden shadow-2xl md:h-[95vh] md:my-4 relative">
+    <div
+      ref={plannerRef}
+      className={cn(
+        "flex flex-col w-full mx-auto border-x border-slate-300 bg-white dark:bg-slate-950 dark:border-slate-800 relative shadow-2xl",
+        isExporting
+          ? "h-auto min-w-[1400px]"
+          : "h-screen overflow-hidden md:h-[95vh] md:my-4"
+      )}
+    >
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end p-4 sm:p-6 border-b-2 border-slate-900 dark:border-slate-100 shrink-0 gap-4 bg-white dark:bg-slate-950 z-20">
         <div className="flex justify-between items-center w-full sm:w-auto">
           <div className="flex flex-col">
             <h1 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase dark:text-white">Weekly Schedule</h1>
-            <div className="flex gap-2 mt-2 no-export">
-               <button
-                 onClick={() => handleExport('png')}
-                 className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors dark:text-white"
-               >
-                 <ImageIcon size={12} /> PNG
-               </button>
-               <button
-                 onClick={() => handleExport('pdf')}
-                 className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors dark:text-white"
-               >
-                 <FileText size={12} /> PDF
-               </button>
-            </div>
+            {!isExporting && (
+              <div className="flex gap-2 mt-2 no-export">
+                <button
+                  onClick={() => handleExport('png')}
+                  className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors dark:text-white"
+                >
+                  <ImageIcon size={12} /> PNG
+                </button>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors dark:text-white"
+                >
+                  <FileText size={12} /> PDF
+                </button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={toggleDarkMode}
-            className="sm:hidden p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400"
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+          {!isExporting && (
+            <button
+              onClick={toggleDarkMode}
+              className="sm:hidden p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 no-export"
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+          )}
         </div>
         <div className="flex items-end gap-4 sm:gap-8 pb-1 w-full sm:w-auto justify-between sm:justify-end">
-           <button
-             onClick={toggleDarkMode}
-             className="hidden sm:flex p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 mb-1"
-           >
-             {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
-           </button>
+           {!isExporting && (
+             <button
+               onClick={toggleDarkMode}
+               className="hidden sm:flex p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 mb-1 no-export"
+             >
+               {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+             </button>
+           )}
            <div className="flex items-baseline gap-2">
              <input
                value={header.month}
@@ -405,64 +427,75 @@ const WeeklyPlanner = () => {
       </header>
 
       {/* Day Selector (Mobile Only) */}
-      <div className="lg:hidden flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto bg-slate-50 dark:bg-slate-900 shrink-0">
-        {days.map((day, index) => (
-          <button
-            key={day}
-            onClick={() => setActiveDayIndex(index)}
-            className={cn(
-              "flex-1 py-3 px-2 text-[10px] font-bold uppercase tracking-tighter border-b-2 transition-colors whitespace-nowrap",
-              activeDayIndex === index
-                ? "border-slate-900 bg-white text-slate-900 dark:border-white dark:bg-slate-950 dark:text-white"
-                : "border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
-            )}
-          >
-            {day.substring(0, 3)}
-          </button>
-        ))}
-      </div>
-
-      {/* Color Palette (Floating Toolbar) */}
-      <div className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 p-2 flex items-center justify-center gap-4 shrink-0 z-10 shadow-sm overflow-x-auto">
-        <div className="flex gap-2.5">
-          <button
-            onClick={() => setSelectedColor('transparent')}
-            className={cn(
-              "w-7 h-7 rounded-full border-2 transition-all hover:scale-110 relative bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
-              selectedColor === 'transparent' ? "border-slate-900 scale-110 ring-4 ring-slate-100 dark:border-white dark:ring-slate-800" : "border-transparent"
-            )}
-            title="Eraser"
-          >
-            {selectedColor === 'transparent' ? <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black dark:text-white">✓</div> : <div className="absolute inset-0 flex items-center justify-center text-[12px] opacity-20 dark:text-white">✕</div>}
-          </button>
-
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center mx-1" />
-
-          {plannerColors.map((color) => (
+      {!isExporting && (
+        <div className="lg:hidden flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto bg-slate-50 dark:bg-slate-900 shrink-0 no-export">
+          {days.map((day, index) => (
             <button
-              key={color}
-              onClick={() => setSelectedColor(color)}
+              key={day}
+              onClick={() => setActiveDayIndex(index)}
               className={cn(
-                "w-7 h-7 rounded-full border-2 transition-all hover:scale-110 relative",
-                selectedColor === color ? "border-slate-900 scale-110 ring-4 ring-slate-100 dark:border-white dark:ring-slate-800" : "border-transparent"
+                "flex-1 py-3 px-2 text-[10px] font-bold uppercase tracking-tighter border-b-2 transition-colors whitespace-nowrap",
+                activeDayIndex === index
+                  ? "border-slate-900 bg-white text-slate-900 dark:border-white dark:bg-slate-950 dark:text-white"
+                  : "border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
               )}
-              style={{ backgroundColor: color }}
             >
-              {selectedColor === color && <div className="absolute inset-0 flex items-center justify-center text-[8px] font-black pointer-events-none text-slate-900">✓</div>}
+              {day.substring(0, 3)}
             </button>
           ))}
         </div>
-      </div>
+      )}
+
+      {/* Color Palette (Floating Toolbar) */}
+      {!isExporting && (
+        <div className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 p-2 flex items-center justify-center gap-4 shrink-0 z-10 shadow-sm overflow-x-auto no-export">
+          <div className="flex gap-2.5">
+            <button
+              onClick={() => setSelectedColor('transparent')}
+              className={cn(
+                "w-7 h-7 rounded-full border-2 transition-all hover:scale-110 relative bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
+                selectedColor === 'transparent' ? "border-slate-900 scale-110 ring-4 ring-slate-100 dark:border-white dark:ring-slate-800" : "border-transparent"
+              )}
+              title="Eraser"
+            >
+              {selectedColor === 'transparent' ? <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black dark:text-white">✓</div> : <div className="absolute inset-0 flex items-center justify-center text-[12px] opacity-20 dark:text-white">✕</div>}
+            </button>
+
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center mx-1" />
+
+            {plannerColors.map((color) => (
+              <button
+                key={color}
+                onClick={() => setSelectedColor(color)}
+                className={cn(
+                  "w-7 h-7 rounded-full border-2 transition-all hover:scale-110 relative",
+                  selectedColor === color ? "border-slate-900 scale-110 ring-4 ring-slate-100 dark:border-white dark:ring-slate-800" : "border-transparent"
+                )}
+                style={{ backgroundColor: color }}
+              >
+                {selectedColor === color && <div className="absolute inset-0 flex items-center justify-center text-[8px] font-black pointer-events-none text-slate-900">✓</div>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Area */}
-      <main className="flex flex-1 overflow-hidden relative">
+      <main className={cn(
+        "flex flex-1 relative",
+        isExporting ? "overflow-visible" : "overflow-hidden"
+      )}>
         {/* Sidebar - Desktop: Fixed, Mobile: Floating Island */}
-        <div className="hidden lg:flex shrink-0 border-r border-slate-300 dark:border-slate-800">
+        <div className={cn(
+          "shrink-0 border-r border-slate-300 dark:border-slate-800",
+          !isExporting && "hidden lg:flex"
+        )}>
           <Sidebar
             settings={sidebarSettings}
             onUpdateSettings={updateSidebarSettings}
             templateMode={templateMode}
             onToggleTemplateMode={() => setTemplateMode(!templateMode)}
+            isExporting={isExporting}
             priorities={weeklyPriorities}
             todos={weeklyTodos}
             habits={habits}
@@ -494,8 +527,8 @@ const WeeklyPlanner = () => {
         </div>
 
         {/* Floating Island for Mobile */}
-        {isOverviewOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        {isOverviewOpen && !isExporting && (
+          <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4 no-export">
             <div
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm dark:bg-slate-950/60"
               onClick={() => setIsOverviewOpen(false)}
@@ -550,13 +583,16 @@ const WeeklyPlanner = () => {
         )}
 
         {/* Day Grid / Active Day */}
-        <div className="flex-1 flex overflow-x-auto overflow-y-auto bg-slate-50/30 dark:bg-slate-900/10">
+        <div className={cn(
+          "flex-1 flex bg-slate-50/30 dark:bg-slate-900/10",
+          isExporting ? "overflow-visible" : "overflow-x-auto overflow-y-auto"
+        )}>
           {days.map((day, index) => (
             <div
               key={day}
               className={cn(
-                "flex-1 flex flex-col min-w-[180px] lg:min-w-[200px] lg:flex",
-                activeDayIndex === index ? "flex" : "hidden lg:flex"
+                "flex-1 flex flex-col min-w-[180px] lg:min-w-[200px]",
+                isExporting ? "flex" : (activeDayIndex === index ? "flex" : "hidden lg:flex")
               )}
             >
               {dailyData[index] && (
@@ -564,6 +600,7 @@ const WeeklyPlanner = () => {
                   day={day}
                   data={dailyData[index]}
                   templateMode={templateMode}
+                  isExporting={isExporting}
                   selectedColor={selectedColor}
                   isToday={!templateMode && new Date().getDay() === index}
                   onUpdate={(updates) => updateDaily(index, updates)}
@@ -576,15 +613,17 @@ const WeeklyPlanner = () => {
         </div>
 
         {/* Mobile Floating Action Button */}
-        <button
-          onClick={() => setIsOverviewOpen(true)}
-          className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-40"
-        >
-          <div className="flex flex-col items-center">
-            <span className="text-[8px] font-black uppercase leading-none mb-0.5">Show</span>
-            <span className="text-[10px] font-black uppercase leading-none">Habits</span>
-          </div>
-        </button>
+        {!isExporting && (
+          <button
+            onClick={() => setIsOverviewOpen(true)}
+            className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-40 no-export"
+          >
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-black uppercase leading-none mb-0.5">Show</span>
+              <span className="text-[10px] font-black uppercase leading-none">Habits</span>
+            </div>
+          </button>
+        )}
       </main>
     </div>
   );

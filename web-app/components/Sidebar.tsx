@@ -18,6 +18,7 @@ interface SidebarProps {
   onUpdateSettings: (updates: Partial<SidebarSettings>) => void;
   templateMode: boolean;
   onToggleTemplateMode: () => void;
+  isExporting?: boolean;
   priorities: TodoItem[];
   todos: TodoItem[];
   habits: HabitItem[];
@@ -50,6 +51,7 @@ interface SidebarProps {
 const Sidebar = ({
   settings, onUpdateSettings,
   templateMode, onToggleTemplateMode,
+  isExporting,
   priorities, todos, habits,
   focusData, onUpdateFocus,
   brainDump, onUpdateBrainDump,
@@ -121,7 +123,10 @@ const Sidebar = ({
   );
 
   return (
-    <div className="w-full lg:w-72 lg:border-r border-slate-300 dark:border-slate-800 p-4 flex flex-col gap-6 text-sm shrink-0 overflow-y-auto bg-white dark:bg-slate-950 relative">
+    <div className={cn(
+      "w-full lg:w-72 lg:border-r border-slate-300 dark:border-slate-800 p-4 flex flex-col gap-6 text-sm shrink-0 bg-white dark:bg-slate-950 relative",
+      isExporting ? "overflow-visible" : "overflow-y-auto"
+    )}>
       {/* Sidebar Header with Settings */}
       <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
         <div className="flex items-center gap-2">
