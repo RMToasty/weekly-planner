@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './Sidebar';
 import DayColumn from './DayColumn';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Download, FileText, Image as ImageIcon } from 'lucide-react';
+import * as htmlToImage from 'html-to-image';
+import { jsPDF } from 'jspdf';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -67,9 +69,13 @@ const WeeklyPlanner = () => {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [templateMode, setTemplateMode] = useState(true);
+  const plannerRef = useRef<HTMLDivElement>(null);
 
   // Helper to get dynamic header defaults
-  const getDynamicHeader = () => {
+  const getDynamicHeader = (isTemplate: boolean) => {
+    if (isTemplate) return { month: '', weekOf: '' };
+
     const now = new Date();
     const month = now.toLocaleString('default', { month: 'short' });
 
@@ -121,7 +127,8 @@ const WeeklyPlanner = () => {
 
     if (saved) {
       const data = JSON.parse(saved);
-      setHeader(data.header || getDynamicHeader());
+      setTemplateMode(data.templateMode !== undefined ? data.templateMode : true);
+      setHeader(data.header || getDynamicHeader(data.templateMode !== undefined ? data.templateMode : true));
       setWeeklyPriorities(data.weeklyPriorities || []);
       setWeeklyTodos(data.weeklyTodos || []);
       setHabits(data.habits || []);
@@ -139,7 +146,8 @@ const WeeklyPlanner = () => {
       setSelectedColor(data.plannerColors?.[0] || DEFAULT_COLORS[0]);
     } else {
       // Default Init - Start with empty lists for the new "Color First" workflow
-      setHeader(getDynamicHeader());
+      setTemplateMode(true);
+      setHeader(getDynamicHeader(true));
       setWeeklyPriorities([]);
       setWeeklyTodos([]);
       setHabits(Array.from({ length: 5 }, () => ({ name: '', days: new Array(7).fill(false) })));
@@ -168,12 +176,46 @@ const WeeklyPlanner = () => {
       localStorage.setItem('planner_data_v7', JSON.stringify({
         header, weeklyPriorities, weeklyTodos, habits, sidebarSettings,
         focusData, brainDump, mealData, gratitudeData, quickTrackers,
-        plannerColors, dailyData
+        plannerColors, dailyData, templateMode
       }));
     }
-  }, [header, weeklyPriorities, weeklyTodos, habits, sidebarSettings, focusData, brainDump, mealData, gratitudeData, quickTrackers, plannerColors, dailyData]);
+  }, [header, weeklyPriorities, weeklyTodos, habits, sidebarSettings, focusData, brainDump, mealData, gratitudeData, quickTrackers, plannerColors, dailyData, templateMode]);
 
   // --- HANDLERS ---
+
+  const handleExport = async (format: 'png' | 'pdf') => {
+    if (!plannerRef.current) return;
+
+    const filter = (node: HTMLElement) => {
+      return !node.classList?.contains('no-export');
+    };
+
+    try {
+      const dataUrl = await htmlToImage.toPng(plannerRef.current, {
+        quality: 1,
+        pixelRatio: 2, // Double resolution
+        backgroundColor: isDarkMode ? '#020617' : '#ffffff',
+        filter: filter as any
+      });
+
+      if (format === 'png') {
+        const link = document.createElement('a');
+        link.download = `weekly-planner-${header.month || 'template'}.png`;
+        link.href = dataUrl;
+        link.click();
+      } else {
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'px',
+          format: [plannerRef.current.offsetWidth * 2, plannerRef.current.offsetHeight * 2]
+        });
+        pdf.addImage(dataUrl, 'PNG', 0, 0, plannerRef.current.offsetWidth * 2, plannerRef.current.offsetHeight * 2);
+        pdf.save(`weekly-planner-${header.month || 'template'}.pdf`);
+      }
+    } catch (err) {
+      console.error('Export failed', err);
+    }
+  };
 
   const updateHeader = (updates: Partial<{ month: string, weekOf: string }>) => {
     setHeader(prev => ({ ...prev, ...updates }));
@@ -306,11 +348,27 @@ const WeeklyPlanner = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full mx-auto border-x border-slate-300 bg-white dark:bg-slate-950 dark:border-slate-800 overflow-hidden shadow-2xl md:h-[95vh] md:my-4 relative">
+    <div ref={plannerRef} className="flex flex-col h-screen w-full mx-auto border-x border-slate-300 bg-white dark:bg-slate-950 dark:border-slate-800 overflow-hidden shadow-2xl md:h-[95vh] md:my-4 relative">
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end p-4 sm:p-6 border-b-2 border-slate-900 dark:border-slate-100 shrink-0 gap-4 bg-white dark:bg-slate-950 z-20">
         <div className="flex justify-between items-center w-full sm:w-auto">
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase dark:text-white">Weekly Schedule</h1>
+          <div className="flex flex-col">
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tighter uppercase dark:text-white">Weekly Schedule</h1>
+            <div className="flex gap-2 mt-2 no-export">
+               <button
+                 onClick={() => handleExport('png')}
+                 className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors dark:text-white"
+               >
+                 <ImageIcon size={12} /> PNG
+               </button>
+               <button
+                 onClick={() => handleExport('pdf')}
+                 className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors dark:text-white"
+               >
+                 <FileText size={12} /> PDF
+               </button>
+            </div>
+          </div>
           <button
             onClick={toggleDarkMode}
             className="sm:hidden p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400"
@@ -403,6 +461,8 @@ const WeeklyPlanner = () => {
           <Sidebar
             settings={sidebarSettings}
             onUpdateSettings={updateSidebarSettings}
+            templateMode={templateMode}
+            onToggleTemplateMode={() => setTemplateMode(!templateMode)}
             priorities={weeklyPriorities}
             todos={weeklyTodos}
             habits={habits}
@@ -454,6 +514,8 @@ const WeeklyPlanner = () => {
                 <Sidebar
                   settings={sidebarSettings}
                   onUpdateSettings={updateSidebarSettings}
+                  templateMode={templateMode}
+                  onToggleTemplateMode={() => setTemplateMode(!templateMode)}
                   priorities={weeklyPriorities}
                   todos={weeklyTodos}
                   habits={habits}
@@ -501,8 +563,9 @@ const WeeklyPlanner = () => {
                 <DayColumn
                   day={day}
                   data={dailyData[index]}
+                  templateMode={templateMode}
                   selectedColor={selectedColor}
-                  isToday={new Date().getDay() === index}
+                  isToday={!templateMode && new Date().getDay() === index}
                   onUpdate={(updates) => updateDaily(index, updates)}
                   onAddPriority={() => addDailyPriority(index)}
                   onRemovePriority={(id) => removeDailyPriority(index, id)}

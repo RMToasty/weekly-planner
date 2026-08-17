@@ -1,8 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { TodoItem, HabitItem, SidebarSettings, QuickTracker } from './WeeklyPlanner';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Settings, X, Check, LayoutGrid } from 'lucide-react';
+import { Settings, X, Check, LayoutGrid, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight } from 'lucide-react';
 import FocusWidget from './FocusWidget';
 import BrainDumpWidget from './BrainDumpWidget';
 import MealPlannerWidget from './MealPlannerWidget';
@@ -16,6 +16,8 @@ function cn(...inputs: ClassValue[]) {
 interface SidebarProps {
   settings: SidebarSettings;
   onUpdateSettings: (updates: Partial<SidebarSettings>) => void;
+  templateMode: boolean;
+  onToggleTemplateMode: () => void;
   priorities: TodoItem[];
   todos: TodoItem[];
   habits: HabitItem[];
@@ -47,6 +49,7 @@ interface SidebarProps {
 
 const Sidebar = ({
   settings, onUpdateSettings,
+  templateMode, onToggleTemplateMode,
   priorities, todos, habits,
   focusData, onUpdateFocus,
   brainDump, onUpdateBrainDump,
@@ -63,16 +66,16 @@ const Sidebar = ({
 
   // Dynamic Calendar Logic
   const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+
+  const monthName = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long' });
+
+  const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  // Current Week Bounds (Only relevant if not in template mode)
   const todayDate = now.getDate();
-
-  const monthName = now.toLocaleString('default', { month: 'long' });
-
-  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-  // Current Week Bounds
   const startOfWeek = new Date(now);
   startOfWeek.setDate(todayDate - now.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
@@ -80,6 +83,20 @@ const Sidebar = ({
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6);
   endOfWeek.setHours(23, 59, 59, 999);
+
+  const changeMonth = (delta: number) => {
+    let newMonth = viewMonth + delta;
+    let newYear = viewYear;
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear--;
+    } else if (newMonth > 11) {
+      newMonth = 0;
+      newYear++;
+    }
+    setViewMonth(newMonth);
+    setViewYear(newYear);
+  };
 
   const renderColorPicker = (type: 'priority' | 'todo') => (
     <div className="flex items-center gap-1.5 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg animate-in slide-in-from-top-1 duration-200 mt-1 mb-2">
@@ -154,20 +171,37 @@ const Sidebar = ({
                 </div>
               </button>
             ))}
+            <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+            <button
+                onClick={onToggleTemplateMode}
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              >
+                <div className="flex flex-col items-start">
+                  <span className="text-xs font-bold dark:text-slate-300">Template Mode</span>
+                  <span className="text-[8px] text-slate-400 uppercase">Blank header & no highlights</span>
+                </div>
+                {templateMode ? <ToggleRight className="text-slate-900 dark:text-white" /> : <ToggleLeft className="text-slate-300" />}
+              </button>
           </div>
         </div>
       )}
 
       {/* Mini Calendar */}
       <div className="space-y-3">
-        <h3 className="font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-1">
-          {monthName} {currentYear}
-        </h3>
+        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-1">
+          <h3 className="font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400">
+            {monthName} {viewYear}
+          </h3>
+          <div className="flex gap-1">
+            <button onClick={() => changeMonth(-1)} className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400"><ChevronLeft size={12}/></button>
+            <button onClick={() => changeMonth(1)} className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400"><ChevronRight size={12}/></button>
+          </div>
+        </div>
         <div className="grid grid-cols-7 gap-1 text-center max-w-[240px]">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
             <div key={i} className={cn(
               "font-bold text-[9px]",
-              now.getDay() === i ? "text-slate-900 dark:text-white" : "text-slate-300 dark:text-slate-600"
+              !templateMode && now.getDay() === i ? "text-slate-900 dark:text-white" : "text-slate-300 dark:text-slate-600"
             )}>{d}</div>
           ))}
 
@@ -177,9 +211,9 @@ const Sidebar = ({
 
           {Array.from({ length: daysInMonth }, (_, i) => {
             const day = i + 1;
-            const date = new Date(currentYear, currentMonth, day);
-            const isToday = day === todayDate;
-            const isCurrentWeek = date >= startOfWeek && date <= endOfWeek;
+            const date = new Date(viewYear, viewMonth, day);
+            const isToday = !templateMode && viewYear === now.getFullYear() && viewMonth === now.getMonth() && day === todayDate;
+            const isCurrentWeek = !templateMode && date >= startOfWeek && date <= endOfWeek;
 
             return (
               <div key={day} className={cn(
@@ -187,7 +221,7 @@ const Sidebar = ({
                 isCurrentWeek && !isToday && "bg-slate-100/50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-200",
                 isToday
                   ? "bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-black scale-110 shadow-sm z-10"
-                  : !isCurrentWeek && "text-slate-400 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                  : (!templateMode && !isCurrentWeek || templateMode) && "text-slate-400 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
               )}>
                 {day}
               </div>

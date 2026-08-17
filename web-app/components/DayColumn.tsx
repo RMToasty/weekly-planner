@@ -11,6 +11,7 @@ function cn(...inputs: ClassValue[]) {
 interface DayColumnProps {
   day: string;
   data: DailyData;
+  templateMode: boolean;
   selectedColor: string;
   isToday?: boolean;
   onUpdate: (updates: Partial<DailyData>) => void;
@@ -18,7 +19,7 @@ interface DayColumnProps {
   onRemovePriority: (id: string) => void;
 }
 
-const DayColumn = ({ day, data, selectedColor, isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
+const DayColumn = ({ day, data, templateMode, selectedColor, isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
   const [editingBlockIdx, setEditingBlockIdx] = useState<number | null>(null);
   const [hoveredBlockIdx, setHoveredBlockIdx] = useState<number | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
