@@ -150,8 +150,10 @@ const DayColumn = ({ day, dayOfMonth, data, templateMode, isExporting, selectedC
 
   return (
     <div className={cn(
-      "flex-1 flex flex-col text-xs bg-white dark:bg-slate-950 relative",
-      isExporting ? "min-w-[200px] border-r border-slate-300 dark:border-slate-800" : "min-w-[180px] lg:min-w-[200px] border-r border-slate-300 dark:border-slate-800"
+      "flex flex-col text-xs bg-white dark:bg-slate-950 relative",
+      isExporting
+        ? "min-w-[200px] shrink-0 border-r border-slate-300 dark:border-slate-800"
+        : "flex-1 min-w-[180px] lg:min-w-[200px] border-r border-slate-300 dark:border-slate-800"
     )}>
       {/* Sticky Top Section: Header + Priorities + Grid Header */}
       <div className={cn(

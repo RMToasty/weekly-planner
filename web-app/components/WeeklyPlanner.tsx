@@ -660,7 +660,7 @@ const WeeklyPlanner = () => {
       className={cn(
         "flex flex-col mx-auto border-x border-slate-300 bg-white dark:bg-slate-950 dark:border-slate-800 relative shadow-2xl",
         isExporting
-          ? "h-auto w-[1600px] overflow-visible"
+          ? "h-auto w-[1800px] overflow-visible"
           : "w-full h-screen overflow-hidden md:h-[95vh] md:my-4"
       )}
     >
@@ -907,8 +907,8 @@ const WeeklyPlanner = () => {
 
         {/* Day Grid / Active Day */}
         <div className={cn(
-          "flex-1 flex bg-slate-50/30 dark:bg-slate-900/10",
-          isExporting ? "overflow-visible" : "overflow-x-auto overflow-y-auto"
+          "flex bg-slate-50/30 dark:bg-slate-900/10",
+          isExporting ? "overflow-visible flex-row" : "flex-1 overflow-x-auto overflow-y-auto"
         )}>
           {days.map((day, index) => {
             // Filter synced events for this day
