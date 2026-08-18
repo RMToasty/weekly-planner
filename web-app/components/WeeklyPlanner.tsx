@@ -705,30 +705,46 @@ const WeeklyPlanner = () => {
              </button>
            )}
            <div className="flex items-center gap-4">
-             <input
-               value={header.month}
-               onChange={(e) => updateHeader({ month: e.target.value })}
-               className="text-2xl sm:text-3xl font-black uppercase text-slate-400 bg-transparent outline-none w-16 sm:w-24 text-right focus:text-slate-900 dark:focus:text-white transition-colors"
-               placeholder="Month"
-             />
+             {isExporting ? (
+               <span className="text-2xl sm:text-3xl font-black uppercase text-slate-900 dark:text-white w-16 sm:w-24 text-right">
+                 {header.month || 'Month'}
+               </span>
+             ) : (
+               <input
+                 value={header.month}
+                 onChange={(e) => updateHeader({ month: e.target.value })}
+                 className="text-2xl sm:text-3xl font-black uppercase text-slate-400 bg-transparent outline-none w-16 sm:w-24 text-right focus:text-slate-900 dark:focus:text-white transition-colors"
+                 placeholder="Month"
+               />
+             )}
              <span className="w-px h-8 sm:h-10 bg-slate-900 dark:bg-slate-100 opacity-20" />
              <div className="flex flex-col relative">
                <div className="flex items-center gap-2">
-                 <button
-                   onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                   className={cn(
-                     "px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full transition-all hover:border-slate-900 dark:hover:border-white group no-export shadow-sm",
-                     isCalendarOpen && "border-slate-900 dark:border-white ring-4 ring-slate-100 dark:ring-slate-800/50"
-                   )}
-                 >
-                   <div className="flex items-center gap-2">
+                 {isExporting ? (
+                   <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-sm">
                      <span className="text-[10px] sm:text-xs font-black uppercase tracking-tighter dark:text-white flex items-center gap-2">
                        Week {weekNumber}
                        <span className="w-1 h-1 bg-slate-300 rounded-full" />
                        <span className="font-bold text-slate-500 dark:text-slate-400">{weekRangeDisplay}</span>
                      </span>
                    </div>
-                 </button>
+                 ) : (
+                   <button
+                     onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                     className={cn(
+                       "px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full transition-all hover:border-slate-900 dark:hover:border-white group no-export shadow-sm",
+                       isCalendarOpen && "border-slate-900 dark:border-white ring-4 ring-slate-100 dark:ring-slate-800/50"
+                     )}
+                   >
+                     <div className="flex items-center gap-2">
+                       <span className="text-[10px] sm:text-xs font-black uppercase tracking-tighter dark:text-white flex items-center gap-2">
+                         Week {weekNumber}
+                         <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                         <span className="font-bold text-slate-500 dark:text-slate-400">{weekRangeDisplay}</span>
+                       </span>
+                     </div>
+                   </button>
+                 )}
 
                  {isCalendarOpen && !isExporting && renderCalendarDropdown()}
                </div>
