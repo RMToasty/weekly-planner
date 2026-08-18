@@ -318,6 +318,13 @@ const WeeklyPlanner = () => {
 
   // --- HANDLERS ---
 
+  const changeWeek = (delta: number) => {
+    const current = new Date(currentWeekId);
+    current.setDate(current.getDate() + (delta * 7));
+    setCurrentWeekId(formatDateId(current));
+    setIsInitialLoadDone(false); // Reset to allow loading effect to trigger correctly
+  };
+
   const handleExport = async (format: 'png' | 'pdf') => {
     if (!plannerRef.current) return;
 
