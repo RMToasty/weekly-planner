@@ -33,7 +33,7 @@ interface SidebarProps {
   gratitudeData: string[];
   onUpdateGratitude: (index: number, val: string) => void;
   quickTrackers: QuickTracker[];
-  onUpdateQuickTracker: (id: string, delta: number) => void;
+  onUpdateQuickTracker: (id: string, updates: Partial<QuickTracker>) => void;
   onAddQuickTracker: () => void;
   onRemoveQuickTracker: (id: string) => void;
   plannerColors: string[];

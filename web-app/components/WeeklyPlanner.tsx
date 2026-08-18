@@ -449,9 +449,9 @@ const WeeklyPlanner = () => {
     });
   };
 
-  const updateQuickTracker = (id: string, delta: number) => {
+  const updateQuickTracker = (id: string, updates: Partial<QuickTracker>) => {
     setQuickTrackers(prev => prev.map(t =>
-      t.id === id ? { ...t, value: Math.max(0, t.value + delta) } : t
+      t.id === id ? { ...t, ...updates } : t
     ));
   };
 
