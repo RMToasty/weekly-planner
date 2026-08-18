@@ -33,6 +33,17 @@ const getWeekNumber = (d: Date) => {
   return weekNo;
 };
 
+const getWeekRangeDisplay = (sunday: Date) => {
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6);
+
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const start = sunday.toLocaleDateString('default', options);
+  const end = saturday.toLocaleDateString('default', { ...options, year: 'numeric' });
+
+  return `${start} - ${end}`;
+};
+
 export interface TodoItem {
   id: string;
   text: string;
@@ -99,9 +110,22 @@ const WeeklyPlanner = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [templateMode, setTemplateMode] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentWeekId, setCurrentWeekId] = useState(formatDateId(getSunday(new Date())));
   const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
   const plannerRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  // Close calendar on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setIsCalendarOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Helper to get dynamic header defaults
   const getDynamicHeader = (isTemplate: boolean, weekStart?: Date) => {
@@ -536,6 +560,93 @@ const WeeklyPlanner = () => {
 
   const progress = calculateProgress();
   const weekNumber = getWeekNumber(new Date(currentWeekId));
+  const weekRangeDisplay = getWeekRangeDisplay(getSunday(new Date(currentWeekId)));
+
+  // Mini Calendar State for Dropdown
+  const [viewMonth, setViewMonth] = useState(new Date(currentWeekId).getMonth());
+  const [viewYear, setViewYear] = useState(new Date(currentWeekId).getFullYear());
+
+  const changeViewMonth = (delta: number) => {
+    let newMonth = viewMonth + delta;
+    let newYear = viewYear;
+    if (newMonth < 0) { newMonth = 11; newYear--; }
+    else if (newMonth > 11) { newMonth = 0; newYear++; }
+    setViewMonth(newMonth);
+    setViewYear(newYear);
+  };
+
+  const renderCalendarDropdown = () => {
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const monthName = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long' });
+
+    return (
+      <div
+        ref={calendarRef}
+        className="absolute top-full right-0 mt-2 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-4 w-64 animate-in fade-in zoom-in duration-200"
+      >
+        <div className="flex justify-between items-center mb-4 px-1">
+          <h4 className="font-black uppercase text-[10px] tracking-widest dark:text-white">
+            {monthName} {viewYear}
+          </h4>
+          <div className="flex gap-1">
+            <button onClick={() => changeViewMonth(-1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400">
+              <ChevronLeft size={14}/>
+            </button>
+            <button onClick={() => changeViewMonth(1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400">
+              <ChevronRight size={14}/>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+            <span key={d} className="text-[9px] font-bold text-slate-300 dark:text-slate-600">{d}</span>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const date = new Date(viewYear, viewMonth, day);
+            const isSelected = formatDateId(getSunday(date)) === currentWeekId;
+            const isToday = formatDateId(date) === formatDateId(new Date());
+
+            return (
+              <button
+                key={day}
+                onClick={() => {
+                  setCurrentWeekId(formatDateId(getSunday(date)));
+                  setIsCalendarOpen(false);
+                }}
+                className={cn(
+                  "h-7 w-7 text-[10px] rounded-full flex items-center justify-center transition-all",
+                  isSelected
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-black scale-110 shadow-md"
+                    : isToday
+                      ? "border-2 border-slate-900 dark:border-white font-bold"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+                )}
+              >
+                {day}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => {
+            setCurrentWeekId(formatDateId(getSunday(new Date())));
+            setIsCalendarOpen(false);
+          }}
+          className="w-full mt-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors dark:text-white"
+        >
+          Jump to Today
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -595,36 +706,34 @@ const WeeklyPlanner = () => {
                placeholder="Month"
              />
              <span className="w-px h-6 sm:h-8 bg-slate-900 dark:bg-slate-100 mx-1" />
-             <div className="flex flex-col min-w-[100px]">
-               <div className="flex items-center justify-between gap-2">
-                 {!isExporting && (
-                   <button onClick={() => changeWeek(-1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400 no-export">
-                     <ChevronLeft size={14}/>
-                   </button>
-                 )}
-                 <span className="text-xl sm:text-2xl font-black uppercase tracking-tighter dark:text-white">
-                   Week {weekNumber}
-                 </span>
-                 {!isExporting && (
-                   <button onClick={() => changeWeek(1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400 no-export">
-                     <ChevronRight size={14}/>
-                   </button>
-                 )}
+             <div className="flex flex-col relative">
+               <div className="flex items-center gap-2">
+                 <button
+                   onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                   className={cn(
+                     "px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full transition-all hover:border-slate-900 dark:hover:border-white group no-export",
+                     isCalendarOpen && "border-slate-900 dark:border-white ring-4 ring-slate-100 dark:ring-slate-800/50"
+                   )}
+                 >
+                   <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-black uppercase tracking-tighter dark:text-white flex items-center gap-1.5">
+                       Week {weekNumber}
+                       <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                       <span className="font-bold text-slate-500 dark:text-slate-400">{weekRangeDisplay}</span>
+                     </span>
+                   </div>
+                 </button>
+
+                 {isCalendarOpen && !isExporting && renderCalendarDropdown()}
                </div>
 
                {/* Progress Bar */}
-               <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full mt-1 overflow-hidden">
+               <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full mt-2 overflow-hidden">
                  <div
-                   className="h-full bg-slate-900 dark:bg-white transition-all duration-500 ease-out"
+                   className="h-full bg-slate-900 dark:bg-white transition-all duration-700 ease-out"
                    style={{ width: `${progress}%` }}
                  />
                </div>
-
-               {!templateMode && (
-                 <span className="text-[7px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-                   {header.weekOf}
-                 </span>
-               )}
              </div>
            </div>
         </div>

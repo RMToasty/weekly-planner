@@ -4,7 +4,7 @@ import { QuickTracker } from './WeeklyPlanner';
 
 interface QuickTrackersWidgetProps {
   data: QuickTracker[];
-  onUpdate: (id: string, delta: number) => void;
+  onUpdate: (id: string, updates: Partial<QuickTracker>) => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
 }
@@ -29,9 +29,23 @@ const QuickTrackersWidget = ({ data, onUpdate, onAdd, onRemove }: QuickTrackersW
         {data.map((tracker) => (
           <div key={tracker.id} className="space-y-1.5 group">
             <div className="flex justify-between items-center px-1">
-              <span className="text-[10px] font-bold dark:text-slate-300">{tracker.name}</span>
+              <input
+                value={tracker.name}
+                onChange={(e) => onUpdate(tracker.id, { name: e.target.value })}
+                className="text-[10px] font-bold dark:text-slate-300 bg-transparent outline-none border-none w-1/2 focus:text-slate-900 dark:focus:text-white"
+                placeholder="Name..."
+              />
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black">{tracker.value} / {tracker.target}</span>
+                <div className="flex items-center text-[10px] font-black dark:text-white">
+                  <span>{tracker.value}</span>
+                  <span className="mx-1 text-slate-300">/</span>
+                  <input
+                    type="number"
+                    value={tracker.target}
+                    onChange={(e) => onUpdate(tracker.id, { target: parseInt(e.target.value) || 1 })}
+                    className="w-8 bg-transparent outline-none border-none text-right focus:text-slate-900 dark:focus:text-white"
+                  />
+                </div>
                 <button
                   onClick={() => onRemove(tracker.id)}
                   className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition-all"
@@ -42,7 +56,7 @@ const QuickTrackersWidget = ({ data, onUpdate, onAdd, onRemove }: QuickTrackersW
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => onUpdate(tracker.id, -1)}
+                onClick={() => onUpdate(tracker.id, { value: Math.max(0, tracker.value - 1) })}
                 className="w-6 h-6 flex items-center justify-center rounded bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <Minus size={10} />
@@ -57,7 +71,7 @@ const QuickTrackersWidget = ({ data, onUpdate, onAdd, onRemove }: QuickTrackersW
                 />
               </div>
               <button
-                onClick={() => onUpdate(tracker.id, 1)}
+                onClick={() => onUpdate(tracker.id, { value: tracker.value + 1 })}
                 className="w-6 h-6 flex items-center justify-center rounded bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <Plus size={10} />
