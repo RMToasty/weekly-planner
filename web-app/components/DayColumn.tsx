@@ -164,12 +164,17 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, synced
             ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
             : "bg-white border-slate-900 dark:bg-slate-950 dark:border-white dark:text-white"
         )}>
-           <div className={cn(
-             "w-4 h-4 border-2 flex items-center justify-center font-black text-[10px]",
-             isToday
-               ? "border-white dark:border-slate-900"
-               : "border-slate-900 dark:border-white"
-           )} />
+           <input
+             value={data.dayNumber || ''}
+             onChange={(e) => onUpdate({ dayNumber: e.target.value })}
+             placeholder="00"
+             className={cn(
+               "w-6 h-6 border-2 flex items-center justify-center font-black text-[10px] bg-transparent outline-none text-center placeholder:opacity-20",
+               isToday
+                 ? "border-white dark:border-slate-900 text-white dark:text-slate-900 placeholder:text-white/50"
+                 : "border-slate-900 dark:border-white text-slate-900 dark:text-white"
+             )}
+           />
            <span className="font-black uppercase tracking-widest text-[10px]">{day}</span>
         </div>
 

@@ -30,6 +30,7 @@ export interface DailyData {
   notes: string;
   schedule: string[]; // 144 slots (24 hours * 6 slots/hour)
   blockMetadata?: Record<number, { text?: string, symbol?: string, iconName?: string }>;
+  dayNumber?: string;
 }
 
 export interface SidebarSettings {
