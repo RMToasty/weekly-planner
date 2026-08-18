@@ -23,6 +23,16 @@ const getSunday = (date: Date) => {
 
 const formatDateId = (date: Date) => date.toISOString().split('T')[0];
 
+// Helper to get week number
+const getWeekNumber = (d: Date) => {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return weekNo;
+};
+
 export interface TodoItem {
   id: string;
   text: string;
@@ -496,6 +506,37 @@ const WeeklyPlanner = () => {
     }
   };
 
+  const calculateProgress = () => {
+    // Total tasks (Priorities + Todos) across all 7 days + Weekly lists
+    const dailyTodos = dailyData.reduce((acc, day) => acc + day.priorities.length, 0);
+    const completedDaily = dailyData.reduce((acc, day) => acc + day.priorities.filter(p => p.completed).length, 0);
+
+    const weeklyTotal = weeklyPriorities.length + weeklyTodos.length;
+    const completedWeekly = weeklyPriorities.filter(p => p.completed).length + weeklyTodos.filter(t => t.completed).length;
+
+    const total = dailyTodos + weeklyTotal;
+    const completed = completedDaily + completedWeekly;
+
+    if (total > 0) return (completed / total) * 100;
+
+    // Fallback: Time progress if no tasks
+    const now = new Date();
+    const sunday = getSunday(new Date(currentWeekId));
+    const nextSunday = new Date(sunday);
+    nextSunday.setDate(sunday.getDate() + 7);
+
+    if (now >= sunday && now < nextSunday) {
+      const elapsed = now.getTime() - sunday.getTime();
+      const totalWeek = 7 * 24 * 60 * 60 * 1000;
+      return (elapsed / totalWeek) * 100;
+    }
+
+    return now > nextSunday ? 100 : 0;
+  };
+
+  const progress = calculateProgress();
+  const weekNumber = getWeekNumber(new Date(currentWeekId));
+
   return (
     <div
       ref={plannerRef}
@@ -554,22 +595,36 @@ const WeeklyPlanner = () => {
                placeholder="Month"
              />
              <span className="w-px h-6 sm:h-8 bg-slate-900 dark:bg-slate-100 mx-1" />
-             <div className="flex flex-col">
-               <div className="flex items-center gap-1">
-                 <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest leading-none dark:text-slate-400">Week of</span>
+             <div className="flex flex-col min-w-[100px]">
+               <div className="flex items-center justify-between gap-2">
                  {!isExporting && (
-                   <div className="flex no-export">
-                     <button onClick={() => changeWeek(-1)} className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400"><ChevronLeft size={10}/></button>
-                     <button onClick={() => changeWeek(1)} className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400"><ChevronRight size={10}/></button>
-                   </div>
+                   <button onClick={() => changeWeek(-1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400 no-export">
+                     <ChevronLeft size={14}/>
+                   </button>
+                 )}
+                 <span className="text-xl sm:text-2xl font-black uppercase tracking-tighter dark:text-white">
+                   Week {weekNumber}
+                 </span>
+                 {!isExporting && (
+                   <button onClick={() => changeWeek(1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400 no-export">
+                     <ChevronRight size={14}/>
+                   </button>
                  )}
                </div>
-               <input
-                 value={header.weekOf}
-                 onChange={(e) => updateHeader({ weekOf: e.target.value })}
-                 className="w-24 sm:w-32 border-b border-slate-400 dark:border-slate-700 h-5 sm:h-6 bg-transparent outline-none text-[10px] sm:text-xs font-bold dark:text-white"
-                 placeholder="..."
-               />
+
+               {/* Progress Bar */}
+               <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full mt-1 overflow-hidden">
+                 <div
+                   className="h-full bg-slate-900 dark:bg-white transition-all duration-500 ease-out"
+                   style={{ width: `${progress}%` }}
+                 />
+               </div>
+
+               {!templateMode && (
+                 <span className="text-[7px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                   {header.weekOf}
+                 </span>
+               )}
              </div>
            </div>
         </div>
