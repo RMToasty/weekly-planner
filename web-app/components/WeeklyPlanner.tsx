@@ -61,7 +61,6 @@ export interface DailyData {
   notes: string;
   schedule: string[]; // 144 slots (24 hours * 6 slots/hour)
   blockMetadata?: Record<number, { text?: string, symbol?: string, iconName?: string }>;
-  dayNumber?: string;
 }
 
 export interface SidebarSettings {
@@ -906,11 +905,14 @@ const WeeklyPlanner = () => {
         )}>
           {days.map((day, index) => {
             // Filter synced events for this day
-            const dayStart = new Date();
-            dayStart.setDate(dayStart.getDate() - dayStart.getDay() + index);
+            const sunday = getSunday(new Date(currentWeekId));
+            const dayStart = new Date(sunday);
+            dayStart.setDate(sunday.getDate() + index);
             dayStart.setHours(0,0,0,0);
             const dayEnd = new Date(dayStart);
             dayEnd.setHours(23,59,59,999);
+
+            const dayOfMonth = dayStart.getDate();
 
             const dayEvents = syncedEvents.filter(e =>
               e.start >= dayStart && e.start <= dayEnd
@@ -927,6 +929,7 @@ const WeeklyPlanner = () => {
                 {dailyData[index] && (
                   <DayColumn
                     day={day}
+                    dayOfMonth={dayOfMonth}
                     data={dailyData[index]}
                     templateMode={templateMode}
                     isExporting={isExporting}

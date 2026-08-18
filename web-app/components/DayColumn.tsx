@@ -40,6 +40,7 @@ function cn(...inputs: ClassValue[]) {
 
 interface DayColumnProps {
   day: string;
+  dayOfMonth: number;
   data: DailyData;
   templateMode: boolean;
   isExporting?: boolean;
@@ -51,7 +52,7 @@ interface DayColumnProps {
   onRemovePriority: (id: string) => void;
 }
 
-const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, syncedEvents = [], isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
+const DayColumn = ({ day, dayOfMonth, data, templateMode, isExporting, selectedColor, syncedEvents = [], isToday, onUpdate, onAddPriority, onRemovePriority }: DayColumnProps) => {
   const [editingBlockIdx, setEditingBlockIdx] = useState<number | null>(null);
   const [hoveredBlockIdx, setHoveredBlockIdx] = useState<number | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -164,17 +165,16 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, synced
             ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
             : "bg-white border-slate-900 dark:bg-slate-950 dark:border-white dark:text-white"
         )}>
-           <input
-             value={data.dayNumber || ''}
-             onChange={(e) => onUpdate({ dayNumber: e.target.value })}
-             placeholder="00"
+           <div
              className={cn(
-               "w-6 h-6 border-2 flex items-center justify-center font-black text-[10px] bg-transparent outline-none text-center placeholder:opacity-20",
+               "w-6 h-6 border-2 flex items-center justify-center font-black text-[10px] select-none",
                isToday
-                 ? "border-white dark:border-slate-900 text-white dark:text-slate-900 placeholder:text-white/50"
+                 ? "border-white dark:border-slate-900 text-white dark:text-slate-900"
                  : "border-slate-900 dark:border-white text-slate-900 dark:text-white"
              )}
-           />
+           >
+             {dayOfMonth < 10 ? `0${dayOfMonth}` : dayOfMonth}
+           </div>
            <span className="font-black uppercase tracking-widest text-[10px]">{day}</span>
         </div>
 
