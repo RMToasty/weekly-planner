@@ -706,20 +706,30 @@ const WeeklyPlanner = () => {
            )}
            <div className="flex items-center gap-4">
              {isExporting ? (
-               <span className="text-2xl sm:text-3xl font-black uppercase text-slate-900 dark:text-white w-16 sm:w-24 text-right">
+               <span className="text-2xl sm:text-3xl font-black uppercase text-slate-900 dark:text-white w-24 sm:w-40 text-right">
                  {header.month || 'Month'}
                </span>
              ) : (
                <input
                  value={header.month}
                  onChange={(e) => updateHeader({ month: e.target.value })}
-                 className="text-2xl sm:text-3xl font-black uppercase text-slate-400 bg-transparent outline-none w-16 sm:w-24 text-right focus:text-slate-900 dark:focus:text-white transition-colors"
+                 className="text-2xl sm:text-3xl font-black uppercase text-slate-400 bg-transparent outline-none w-24 sm:w-40 text-right focus:text-slate-900 dark:focus:text-white transition-colors"
                  placeholder="Month"
                />
              )}
              <span className="w-px h-8 sm:h-10 bg-slate-900 dark:bg-slate-100 opacity-20" />
              <div className="flex flex-col relative">
                <div className="flex items-center gap-2">
+                 {!isExporting && (
+                   <button
+                     onClick={() => changeWeek(-1)}
+                     className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-900 dark:hover:text-white no-export"
+                     title="Previous Week"
+                   >
+                     <ChevronLeft size={18} />
+                   </button>
+                 )}
+
                  {isExporting ? (
                    <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-sm">
                      <span className="text-[10px] sm:text-xs font-black uppercase tracking-tighter dark:text-white flex items-center gap-2">
@@ -743,6 +753,16 @@ const WeeklyPlanner = () => {
                          <span className="font-bold text-slate-500 dark:text-slate-400">{weekRangeDisplay}</span>
                        </span>
                      </div>
+                   </button>
+                 )}
+
+                 {!isExporting && (
+                   <button
+                     onClick={() => changeWeek(1)}
+                     className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-900 dark:hover:text-white no-export"
+                     title="Next Week"
+                   >
+                     <ChevronRight size={18} />
                    </button>
                  )}
 
