@@ -5,13 +5,23 @@ import Sidebar from './Sidebar';
 import DayColumn from './DayColumn';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Sun, Moon, Download, FileText, Image as ImageIcon } from 'lucide-react';
+import { Sun, Moon, Download, FileText, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { jsPDF } from 'jspdf';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// Helper to get Sunday of the week for a given date
+const getSunday = (date: Date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day;
+  return new Date(d.setDate(diff));
+};
+
+const formatDateId = (date: Date) => date.toISOString().split('T')[0];
 
 export interface TodoItem {
   id: string;
@@ -79,18 +89,16 @@ const WeeklyPlanner = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [templateMode, setTemplateMode] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [currentWeekId, setCurrentWeekId] = useState(formatDateId(getSunday(new Date())));
+  const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
   const plannerRef = useRef<HTMLDivElement>(null);
 
   // Helper to get dynamic header defaults
-  const getDynamicHeader = (isTemplate: boolean) => {
+  const getDynamicHeader = (isTemplate: boolean, weekStart?: Date) => {
     if (isTemplate) return { month: '', weekOf: '' };
 
-    const now = new Date();
-    const month = now.toLocaleString('default', { month: 'short' });
-
-    // Get most recent Sunday
-    const sunday = new Date(now);
-    sunday.setDate(now.getDate() - now.getDay());
+    const sunday = weekStart || getSunday(new Date());
+    const month = sunday.toLocaleString('default', { month: 'short' });
     const weekOf = `${month} ${sunday.getDate()}`;
 
     return { month: month.toUpperCase(), weekOf };
@@ -127,8 +135,9 @@ const WeeklyPlanner = () => {
 
   // --- PERSISTENCE ---
 
+  // Load Global Settings & Week-specific Data
   useEffect(() => {
-    const saved = localStorage.getItem('planner_data_v7');
+    const savedGlobal = localStorage.getItem('planner_global_v1');
     const savedTheme = localStorage.getItem('planner_theme');
 
     if (savedTheme === 'dark') {
@@ -136,62 +145,87 @@ const WeeklyPlanner = () => {
       document.documentElement.classList.add('dark');
     }
 
-    if (saved) {
-      const data = JSON.parse(saved);
-      setTemplateMode(data.templateMode !== undefined ? data.templateMode : true);
-      setHeader(data.header || getDynamicHeader(data.templateMode !== undefined ? data.templateMode : true));
-      setWeeklyPriorities(data.weeklyPriorities || []);
-      setWeeklyTodos(data.weeklyTodos || []);
-      setHabits(data.habits || []);
-      setSidebarSettings(data.sidebarSettings || DEFAULT_SETTINGS);
-      setFocusData(data.focusData || ['', '', '']);
-      setBrainDump(data.brainDump || '');
-      setMealData(data.mealData || new Array(7).fill(''));
-      setGratitudeData(data.gratitudeData || new Array(7).fill(''));
-      setQuickTrackers(data.quickTrackers || []);
-      setPlannerColors(data.plannerColors || DEFAULT_COLORS);
-      setCalendarUrl(data.calendarUrl || '');
-      setDailyData((data.dailyData || []).map((d: any) => ({
-        ...d,
-        blockMetadata: d.blockMetadata || {}
-      })));
-      setSelectedColor(data.plannerColors?.[0] || DEFAULT_COLORS[0]);
-    } else {
-      // Default Init - Start with empty lists for the new "Color First" workflow
-      setTemplateMode(true);
-      setHeader(getDynamicHeader(true));
-      setWeeklyPriorities([]);
-      setWeeklyTodos([]);
-      setHabits(Array.from({ length: 5 }, () => ({ name: '', days: new Array(7).fill(false) })));
-      setSidebarSettings(DEFAULT_SETTINGS);
-      setFocusData(['', '', '']);
-      setBrainDump('');
-      setMealData(new Array(7).fill(''));
-      setGratitudeData(new Array(7).fill(''));
-      setQuickTrackers([
-        { id: 'water', name: 'Water (glasses)', value: 0, target: 8, color: '#3b82f6' },
-        { id: 'sleep', name: 'Sleep (hours)', value: 0, target: 8, color: '#8b5cf6' }
-      ]);
-      setPlannerColors(DEFAULT_COLORS);
-      setSelectedColor(DEFAULT_COLORS[0]);
-      setDailyData(days.map((_, dayIdx) => ({
-        priorities: Array.from({ length: 4 }, (_, i) => ({ id: `dp-${dayIdx}-${i}`, text: '', completed: false })),
-        notes: '',
-        schedule: new Array(144).fill('transparent'),
-        blockMetadata: {}
-      })));
+    if (savedGlobal) {
+      const global = JSON.parse(savedGlobal);
+      setSidebarSettings(global.sidebarSettings || DEFAULT_SETTINGS);
+      setPlannerColors(global.plannerColors || DEFAULT_COLORS);
+      setCalendarUrl(global.calendarUrl || '');
+      setTemplateMode(global.templateMode !== undefined ? global.templateMode : true);
+      // We don't automatically set currentWeekId from global here to avoid
+      // overwriting the initial state if the user just navigated.
     }
   }, []);
 
   useEffect(() => {
-    if (dailyData.length > 0) {
-      localStorage.setItem('planner_data_v7', JSON.stringify({
-        header, weeklyPriorities, weeklyTodos, habits, sidebarSettings,
+    const savedWeek = localStorage.getItem(`planner_week_${currentWeekId}`);
+    const legacyData = localStorage.getItem('planner_data_v7');
+
+    const loadWeekData = (rawData: string | null) => {
+      if (rawData) {
+        const data = JSON.parse(rawData);
+        setHeader(data.header || getDynamicHeader(templateMode, new Date(currentWeekId)));
+        setWeeklyPriorities(data.weeklyPriorities || []);
+        setWeeklyTodos(data.weeklyTodos || []);
+        setHabits(data.habits || []);
+        setFocusData(data.focusData || ['', '', '']);
+        setBrainDump(data.brainDump || '');
+        setMealData(data.mealData || new Array(7).fill(''));
+        setGratitudeData(data.gratitudeData || new Array(7).fill(''));
+        setQuickTrackers(data.quickTrackers || []);
+        setDailyData((data.dailyData || []).map((d: any) => ({
+          ...d,
+          blockMetadata: d.blockMetadata || {}
+        })));
+      } else {
+        // Init New Week
+        setHeader(getDynamicHeader(templateMode, new Date(currentWeekId)));
+        setWeeklyPriorities([]);
+        setWeeklyTodos([]);
+        setHabits(Array.from({ length: 5 }, () => ({ name: '', days: new Array(7).fill(false) })));
+        setFocusData(['', '', '']);
+        setBrainDump('');
+        setMealData(new Array(7).fill(''));
+        setGratitudeData(new Array(7).fill(''));
+        setQuickTrackers([
+          { id: 'water', name: 'Water (glasses)', value: 0, target: 8, color: '#3b82f6' },
+          { id: 'sleep', name: 'Sleep (hours)', value: 0, target: 8, color: '#8b5cf6' }
+        ]);
+        setDailyData(days.map((_, dayIdx) => ({
+          priorities: Array.from({ length: 4 }, (_, i) => ({ id: `dp-${dayIdx}-${i}`, text: '', completed: false })),
+          notes: '',
+          schedule: new Array(144).fill('transparent'),
+          blockMetadata: {}
+        })));
+      }
+      setIsInitialLoadDone(true);
+    };
+
+    // Migration logic
+    if (legacyData && !savedWeek && currentWeekId === formatDateId(getSunday(new Date()))) {
+      loadWeekData(legacyData);
+      localStorage.removeItem('planner_data_v7'); // Move to week-specific storage
+    } else {
+      loadWeekData(savedWeek);
+    }
+  }, [currentWeekId]);
+
+  // Save Global Settings
+  useEffect(() => {
+    localStorage.setItem('planner_global_v1', JSON.stringify({
+      sidebarSettings, plannerColors, calendarUrl, templateMode
+    }));
+  }, [sidebarSettings, plannerColors, calendarUrl, templateMode]);
+
+  // Save Week-specific Data
+  useEffect(() => {
+    if (isInitialLoadDone && dailyData.length > 0) {
+      localStorage.setItem(`planner_week_${currentWeekId}`, JSON.stringify({
+        header, weeklyPriorities, weeklyTodos, habits,
         focusData, brainDump, mealData, gratitudeData, quickTrackers,
-        plannerColors, dailyData, templateMode, calendarUrl
+        dailyData
       }));
     }
-  }, [header, weeklyPriorities, weeklyTodos, habits, sidebarSettings, focusData, brainDump, mealData, gratitudeData, quickTrackers, plannerColors, dailyData, templateMode, calendarUrl]);
+  }, [currentWeekId, header, weeklyPriorities, weeklyTodos, habits, focusData, brainDump, mealData, gratitudeData, quickTrackers, dailyData, isInitialLoadDone]);
 
   // Calendar Sync Logic
   useEffect(() => {
@@ -514,7 +548,15 @@ const WeeklyPlanner = () => {
              />
              <span className="w-px h-6 sm:h-8 bg-slate-900 dark:bg-slate-100 mx-1" />
              <div className="flex flex-col">
-               <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest leading-none dark:text-slate-400">Week of</span>
+               <div className="flex items-center gap-1">
+                 <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest leading-none dark:text-slate-400">Week of</span>
+                 {!isExporting && (
+                   <div className="flex no-export">
+                     <button onClick={() => changeWeek(-1)} className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400"><ChevronLeft size={10}/></button>
+                     <button onClick={() => changeWeek(1)} className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-400"><ChevronRight size={10}/></button>
+                   </div>
+                 )}
+               </div>
                <input
                  value={header.weekOf}
                  onChange={(e) => updateHeader({ weekOf: e.target.value })}
