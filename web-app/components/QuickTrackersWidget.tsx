@@ -54,7 +54,13 @@ const QuickTrackersWidget = ({ data, onUpdate, onAdd, onRemove }: QuickTrackersW
                   <input
                     type="number"
                     value={tracker.target}
-                    onChange={(e) => onUpdate(tracker.id, { target: parseInt(e.target.value) || 1 })}
+                    onChange={(e) => {
+                      const newTarget = parseInt(e.target.value) || 1;
+                      onUpdate(tracker.id, {
+                        target: newTarget,
+                        value: Math.min(tracker.value, newTarget)
+                      });
+                    }}
                     className="w-6 bg-transparent outline-none border-none text-left focus:text-slate-900 dark:focus:text-white transition-colors"
                   />
                 </div>
@@ -84,7 +90,7 @@ const QuickTrackersWidget = ({ data, onUpdate, onAdd, onRemove }: QuickTrackersW
                 />
               </div>
               <button
-                onClick={() => onUpdate(tracker.id, { value: tracker.value + 1 })}
+                onClick={() => onUpdate(tracker.id, { value: Math.min(tracker.target, tracker.value + 1) })}
                 className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-100 dark:border-slate-800"
               >
                 <Plus size={10} className="text-slate-400 group-hover:text-slate-600" />
