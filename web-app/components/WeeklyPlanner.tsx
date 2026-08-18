@@ -363,8 +363,8 @@ const WeeklyPlanner = () => {
 
     setIsExporting(true);
 
-    // Small delay to allow React to re-render with expanded styles
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Increase delay to 500ms to allow mobile browsers to render the full 1600px layout
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const filter = (node: HTMLElement) => {
       return !node.classList?.contains('no-export');
@@ -373,9 +373,13 @@ const WeeklyPlanner = () => {
     try {
       const dataUrl = await htmlToImage.toPng(plannerRef.current, {
         quality: 1,
-        pixelRatio: 2, // Double resolution
+        pixelRatio: 2, // High resolution
         backgroundColor: isDarkMode ? '#020617' : '#ffffff',
-        filter: filter as any
+        filter: filter as any,
+        // Force font integrity during capture
+        style: {
+          fontFamily: 'Inter, sans-serif',
+        }
       });
 
       if (format === 'png') {
@@ -384,12 +388,15 @@ const WeeklyPlanner = () => {
         link.href = dataUrl;
         link.click();
       } else {
+        // Use actual dimensions to ensure nothing is cropped
+        const width = plannerRef.current.offsetWidth;
+        const height = plannerRef.current.offsetHeight;
         const pdf = new jsPDF({
           orientation: 'landscape',
           unit: 'px',
-          format: [plannerRef.current.offsetWidth * 2, plannerRef.current.offsetHeight * 2]
+          format: [width, height]
         });
-        pdf.addImage(dataUrl, 'PNG', 0, 0, plannerRef.current.offsetWidth * 2, plannerRef.current.offsetHeight * 2);
+        pdf.addImage(dataUrl, 'PNG', 0, 0, width, height);
         pdf.save(`weekly-planner-${header.month || 'template'}.pdf`);
       }
     } catch (err) {
@@ -651,10 +658,10 @@ const WeeklyPlanner = () => {
     <div
       ref={plannerRef}
       className={cn(
-        "flex flex-col w-full mx-auto border-x border-slate-300 bg-white dark:bg-slate-950 dark:border-slate-800 relative shadow-2xl",
+        "flex flex-col mx-auto border-x border-slate-300 bg-white dark:bg-slate-950 dark:border-slate-800 relative shadow-2xl",
         isExporting
-          ? "h-auto min-w-[1400px]"
-          : "h-screen overflow-hidden md:h-[95vh] md:my-4"
+          ? "h-auto w-[1600px] overflow-visible"
+          : "w-full h-screen overflow-hidden md:h-[95vh] md:my-4"
       )}
     >
       {/* Header */}
