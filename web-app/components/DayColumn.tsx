@@ -371,7 +371,7 @@ const DayColumn = ({ day, dayOfMonth, data, templateMode, isExporting, selectedC
         <textarea
           value={data.notes}
           onChange={(e) => onUpdate({ notes: e.target.value })}
-          className="bg-lined bg-transparent w-full flex-1 min-h-[100px] outline-none resize-none text-sm font-sans leading-[24px] pt-[21px] pb-0 overflow-hidden dark:text-white dark:placeholder:text-slate-800"
+          className="bg-lined bg-transparent w-full flex-1 min-h-[100px] outline-none resize-none text-sm font-sans leading-[24px] pt-[21px] pb-0 overflow-y-auto dark:text-white dark:placeholder:text-slate-800"
           spellCheck={false}
           placeholder="Daily reflections..."
         />
