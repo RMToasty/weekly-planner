@@ -230,7 +230,7 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, synced
 
       {/* Hourly Schedule (Scrollable area) */}
       <div className={cn(
-        "flex-grow flex flex-col min-h-0 bg-slate-50/10 dark:bg-slate-900/5 relative",
+        "flex flex-col min-h-0 bg-slate-50/10 dark:bg-slate-900/5 relative",
         isExporting ? "overflow-visible" : ""
       )}>
         {/* Synced Events Layer */}
@@ -362,14 +362,14 @@ const DayColumn = ({ day, data, templateMode, isExporting, selectedColor, synced
 
       {/* Sticky Bottom Section: Notes */}
       <div className={cn(
-        "z-30 border-t-2 border-slate-900 dark:border-slate-100 p-3 bg-white dark:bg-slate-950 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]",
+        "z-30 border-t-2 border-slate-900 dark:border-slate-100 p-3 bg-white dark:bg-slate-950 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] flex-grow flex flex-col",
         isExporting ? "relative" : "sticky bottom-0"
       )}>
         <h4 className="font-black uppercase text-[9px] mb-1.5 text-slate-400 dark:text-slate-500 tracking-wider">Notes</h4>
         <textarea
           value={data.notes}
           onChange={(e) => onUpdate({ notes: e.target.value })}
-          className="bg-lined bg-transparent w-full h-24 outline-none resize-none text-sm font-sans leading-[24px] pt-[21px] pb-0 overflow-hidden dark:text-white dark:placeholder:text-slate-800"
+          className="bg-lined bg-transparent w-full flex-1 min-h-[100px] outline-none resize-none text-sm font-sans leading-[24px] pt-[21px] pb-0 overflow-hidden dark:text-white dark:placeholder:text-slate-800"
           spellCheck={false}
           placeholder="Daily reflections..."
         />
