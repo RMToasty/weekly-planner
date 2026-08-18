@@ -328,11 +328,11 @@ const DayColumn = ({ day, dayOfMonth, data, templateMode, isExporting, selectedC
                             height: `${dims.height * 100}%`
                           }}
                         >
-                          <span className="bg-white/40 dark:bg-black/40 backdrop-blur-[2px] rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
+                          <span className="bg-white/40 dark:bg-black/40 backdrop-blur-[2px] rounded-full px-2 min-w-5 h-5 flex items-center justify-center shadow-sm">
                             {metadata.iconName ? (
                               React.createElement((Icons as any)[metadata.iconName], { size: 12, className: "dark:text-white text-slate-900" })
                             ) : (
-                              <span className="text-[10px] font-black">{metadata.symbol}</span>
+                              <span className="text-[9px] font-black whitespace-nowrap">{metadata.symbol}</span>
                             )}
                           </span>
                         </div>
@@ -417,10 +417,9 @@ const DayColumn = ({ day, dayOfMonth, data, templateMode, isExporting, selectedC
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase text-slate-400">Or Symbol (Max 2 chars)</label>
+                <label className="text-[9px] font-black uppercase text-slate-400">Or Label / Symbol</label>
                 <input
                   type="text"
-                  maxLength={2}
                   value={data.blockMetadata?.[editingBlockIdx]?.symbol || ''}
                   onChange={(e) => updateMetadata(editingBlockIdx, { symbol: e.target.value, iconName: '' })}
                   placeholder="⚡"
