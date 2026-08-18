@@ -49,7 +49,7 @@ const QuickTrackersWidget = ({ data, onUpdate, onAdd, onRemove }: QuickTrackersW
               />
               <div className="flex items-center gap-2">
                 <div className="flex items-baseline text-[11px] font-black dark:text-white">
-                  <span className="w-5 text-right">{tracker.value}</span>
+                  <span className="w-5 text-right">{Math.min(tracker.value, tracker.target)}</span>
                   <span className="mx-1 text-slate-300 opacity-50">/</span>
                   <input
                     type="number"

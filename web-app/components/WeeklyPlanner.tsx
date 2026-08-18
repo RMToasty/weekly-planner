@@ -21,7 +21,17 @@ const getSunday = (date: Date) => {
   return new Date(d.setDate(diff));
 };
 
-const formatDateId = (date: Date) => date.toISOString().split('T')[0];
+const formatDateId = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const parseIdToDate = (id: string) => {
+  const [y, m, d] = id.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 
 // Helper to get week number
 const getWeekNumber = (d: Date) => {
@@ -196,7 +206,7 @@ const WeeklyPlanner = () => {
     const loadWeekData = (rawData: string | null) => {
       if (rawData) {
         const data = JSON.parse(rawData);
-        setHeader(data.header || getDynamicHeader(templateMode, new Date(currentWeekId)));
+        setHeader(data.header || getDynamicHeader(templateMode, parseIdToDate(currentWeekId)));
         setWeeklyPriorities(data.weeklyPriorities || []);
         setWeeklyTodos(data.weeklyTodos || []);
         setHabits(data.habits || []);
@@ -211,7 +221,7 @@ const WeeklyPlanner = () => {
         })));
       } else {
         // Init New Week
-        setHeader(getDynamicHeader(templateMode, new Date(currentWeekId)));
+        setHeader(getDynamicHeader(templateMode, parseIdToDate(currentWeekId)));
         setWeeklyPriorities([]);
         setWeeklyTodos([]);
         setHabits(Array.from({ length: 5 }, () => ({ name: '', days: new Array(7).fill(false) })));
@@ -352,7 +362,7 @@ const WeeklyPlanner = () => {
   // --- HANDLERS ---
 
   const changeWeek = (delta: number) => {
-    const current = new Date(currentWeekId);
+    const current = parseIdToDate(currentWeekId);
     current.setDate(current.getDate() + (delta * 7));
     setCurrentWeekId(formatDateId(current));
     setIsInitialLoadDone(false); // Reset to allow loading effect to trigger correctly
@@ -538,20 +548,20 @@ const WeeklyPlanner = () => {
 
   const calculateProgress = () => {
     // Total tasks (Priorities + Todos) across all 7 days + Weekly lists
-    const dailyTodos = dailyData.reduce((acc, day) => acc + day.priorities.length, 0);
+    const dailyTodosCount = dailyData.reduce((acc, day) => acc + day.priorities.length, 0);
     const completedDaily = dailyData.reduce((acc, day) => acc + day.priorities.filter(p => p.completed).length, 0);
 
     const weeklyTotal = weeklyPriorities.length + weeklyTodos.length;
     const completedWeekly = weeklyPriorities.filter(p => p.completed).length + weeklyTodos.filter(t => t.completed).length;
 
-    const total = dailyTodos + weeklyTotal;
+    const total = dailyTodosCount + weeklyTotal;
     const completed = completedDaily + completedWeekly;
 
     if (total > 0) return (completed / total) * 100;
 
     // Fallback: Time progress if no tasks
     const now = new Date();
-    const sunday = getSunday(new Date(currentWeekId));
+    const sunday = getSunday(parseIdToDate(currentWeekId));
     const nextSunday = new Date(sunday);
     nextSunday.setDate(sunday.getDate() + 7);
 
@@ -565,12 +575,12 @@ const WeeklyPlanner = () => {
   };
 
   const progress = calculateProgress();
-  const weekNumber = getWeekNumber(new Date(currentWeekId));
-  const weekRangeDisplay = getWeekRangeDisplay(getSunday(new Date(currentWeekId)));
+  const weekNumber = getWeekNumber(parseIdToDate(currentWeekId));
+  const weekRangeDisplay = getWeekRangeDisplay(getSunday(parseIdToDate(currentWeekId)));
 
   // Mini Calendar State for Dropdown
-  const [viewMonth, setViewMonth] = useState(new Date(currentWeekId).getMonth());
-  const [viewYear, setViewYear] = useState(new Date(currentWeekId).getFullYear());
+  const [viewMonth, setViewMonth] = useState(parseIdToDate(currentWeekId).getMonth());
+  const [viewYear, setViewYear] = useState(parseIdToDate(currentWeekId).getFullYear());
 
   const changeViewMonth = (delta: number) => {
     let newMonth = viewMonth + delta;
@@ -616,7 +626,7 @@ const WeeklyPlanner = () => {
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const date = new Date(viewYear, viewMonth, day);
-            const isSelected = formatDateId(getSunday(date)) === currentWeekId;
+            const isSelectedWeek = formatDateId(getSunday(date)) === currentWeekId;
             const isToday = formatDateId(date) === formatDateId(new Date());
 
             return (
@@ -627,15 +637,17 @@ const WeeklyPlanner = () => {
                   setIsCalendarOpen(false);
                 }}
                 className={cn(
-                  "h-7 w-7 text-[10px] rounded-full flex items-center justify-center transition-all",
-                  isSelected
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-black scale-110 shadow-md"
-                    : isToday
-                      ? "border-2 border-slate-900 dark:border-white font-bold"
-                      : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  "h-7 w-7 text-[10px] rounded-full flex items-center justify-center transition-all relative",
+                  isSelectedWeek && !isToday && "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold",
+                  isToday
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-black scale-110 shadow-md z-10"
+                    : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
                 )}
               >
                 {day}
+                {isSelectedWeek && (
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-slate-400 rounded-full" />
+                )}
               </button>
             );
           })}
@@ -948,7 +960,7 @@ const WeeklyPlanner = () => {
         )}>
           {days.map((day, index) => {
             // Filter synced events for this day
-            const sunday = getSunday(new Date(currentWeekId));
+            const sunday = getSunday(parseIdToDate(currentWeekId));
             const dayStart = new Date(sunday);
             dayStart.setDate(sunday.getDate() + index);
             dayStart.setHours(0,0,0,0);
